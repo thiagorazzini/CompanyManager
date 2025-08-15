@@ -1,0 +1,78 @@
+## Visual Studio 2022 / .NET
+
+# Build results
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Roslyn cache
+*.ide/
+
+# User-specific files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# VS Code workspace
+.vscode/
+
+# Visual Studio cache/options directory
+.vs/
+
+# NuGet packages
+*.nupkg
+# Ignore package restore results
+packages/
+!packages/*.keep
+
+# Visual Studio profiler
+*.psess
+*.vsp
+*.vspx
+*.sap
+
+# Test results
+TestResult*/
+[Tt]est[Rr]esult*/
+*.coverage
+*.coveragexml
+
+# Build logs
+*.tlog
+
+# BenchmarkDotNet artifacts
+BenchmarkDotNet.Artifacts/
+
+# NCrunch
+_NCrunch_*
+.*crunch*.local.xml
+
+# Rider
+.idea/
+
+# DotCover
+.idea/
+*.dotCover
+
+# Entity Framework
+*_MigrationHistory/
+Migrations/
+
+# Auto-generated files
+*.generated.cs
+*.g.cs
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.bak
+*.swp
+*~
+
+# Azure
+PublishProfiles/
+*.pubxml
+*.publishproj
