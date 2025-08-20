@@ -1,11 +1,14 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using CompanyManager.API.Models;
+using CompanyManager.API.Models.Responses;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using System.Text.Json;
+using System.Diagnostics;
 
 namespace CompanyManager.API.Controllers
 {
-    [Route("api/health")]
     [ApiController]
+    [Route("api/v1/health")]
+    [Produces("application/json")]
     public class HealthController : ControllerBase
     {
         private readonly HealthCheckService _healthCheckService;
@@ -16,29 +19,23 @@ namespace CompanyManager.API.Controllers
         }
 
         /// <summary>
-        /// Gets the overall health status of the application
+        /// Gets overall health status
         /// </summary>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Health status information</returns>
         [HttpGet]
-        [ProducesResponseType(typeof(HealthStatus), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(HealthStatus), StatusCodes.Status503ServiceUnavailable)]
-        public async Task<IActionResult> GetHealth()
+        [ProducesResponseType(typeof(HealthCheckInfo), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+        public async Task<IActionResult> GetHealth(CancellationToken cancellationToken)
         {
-            var healthReport = await _healthCheckService.CheckHealthAsync();
+            var healthReport = await _healthCheckService.CheckHealthAsync(cancellationToken: cancellationToken);
 
-            var response = new
+            var response = new HealthCheckInfo
             {
                 Status = healthReport.Status.ToString(),
                 Timestamp = DateTime.UtcNow,
-                Duration = healthReport.TotalDuration,
-                Checks = healthReport.Entries.Select(entry => new
-                {
-                    Name = entry.Key,
-                    Status = entry.Value.Status.ToString(),
-                    Description = entry.Value.Description,
-                    Duration = entry.Value.Duration,
-                    Tags = entry.Value.Tags
-                })
+                Uptime = DateTime.UtcNow - Process.GetCurrentProcess().StartTime.ToUniversalTime(),
+                Version = "1.0.0"
             };
 
             return healthReport.Status == HealthStatus.Healthy 
@@ -47,72 +44,127 @@ namespace CompanyManager.API.Controllers
         }
 
         /// <summary>
-        /// Gets detailed health information in JSON format
+        /// Gets detailed health status with individual check results
         /// </summary>
-        /// <returns>Detailed health report</returns>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Detailed health status information</returns>
         [HttpGet("detailed")]
-        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetDetailedHealth()
+        [ProducesResponseType(typeof(DetailedHealthCheckInfo), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+        public async Task<IActionResult> GetDetailedHealth(CancellationToken cancellationToken)
         {
-            var healthReport = await _healthCheckService.CheckHealthAsync();
+            var healthReport = await _healthCheckService.CheckHealthAsync(cancellationToken: cancellationToken);
 
-            var response = new
+            var response = new DetailedHealthCheckInfo
             {
                 Status = healthReport.Status.ToString(),
                 Timestamp = DateTime.UtcNow,
-                Duration = healthReport.TotalDuration,
-                Checks = healthReport.Entries.Select(entry => new
-                {
-                    Name = entry.Key,
-                    Status = entry.Value.Status.ToString(),
-                    Description = entry.Value.Description,
-                    Duration = entry.Value.Duration,
-                    Tags = entry.Value.Tags,
-                    Exception = entry.Value.Exception?.Message,
-                    Data = entry.Value.Data
-                })
+                Uptime = DateTime.UtcNow - Process.GetCurrentProcess().StartTime.ToUniversalTime(),
+                Version = "1.0.0",
+                Data = healthReport.Entries.ToDictionary(
+                    entry => entry.Key,
+                    entry => (object)new
+                    {
+                        Status = entry.Value.Status.ToString(),
+                        Description = entry.Value.Description,
+                        Duration = entry.Value.Duration,
+                        Tags = entry.Value.Tags
+                    })
+            };
+
+            return healthReport.Status == HealthStatus.Healthy 
+                ? Ok(response) 
+                : StatusCode(StatusCodes.Status503ServiceUnavailable, response);
+        }
+
+        /// <summary>
+        /// Simple ping endpoint for load balancer health checks
+        /// </summary>
+        /// <returns>Ping response</returns>
+        [HttpGet("ping")]
+        [ProducesResponseType(typeof(PingResponse), StatusCodes.Status200OK)]
+        public IActionResult Ping()
+        {
+            var response = new PingResponse
+            {
+                Message = "pong",
+                Timestamp = DateTime.UtcNow
             };
 
             return Ok(response);
         }
 
         /// <summary>
-        /// Gets a simple health status (useful for load balancers)
-        /// </summary>
-        /// <returns>Simple health status</returns>
-        [HttpGet("ping")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        public IActionResult Ping()
-        {
-            return Ok(new { Status = "OK", Timestamp = DateTime.UtcNow });
-        }
-
-        /// <summary>
         /// Gets readiness status (useful for Kubernetes readiness probes)
         /// </summary>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Readiness status</returns>
         [HttpGet("ready")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
-        public async Task<IActionResult> GetReadiness()
+        [ProducesResponseType(typeof(ReadinessResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ReadinessResponse), StatusCodes.Status503ServiceUnavailable)]
+        public async Task<IActionResult> GetReadiness(CancellationToken cancellationToken)
         {
             var healthReport = await _healthCheckService.CheckHealthAsync(registration => 
-                registration.Tags.Contains("ready"));
+                registration.Tags.Contains("ready"), cancellationToken: cancellationToken);
+
+                            var response = new ReadinessResponse
+                {
+                    Status = healthReport.Status == HealthStatus.Healthy ? "Ready" : "Not Ready",
+                    Timestamp = DateTime.UtcNow,
+                    Checks = new Dictionary<string, object>
+                    {
+                        ["Total"] = healthReport.Entries.Count,
+                        ["Healthy"] = healthReport.Entries.Count(e => e.Value.Status == HealthStatus.Healthy),
+                        ["Unhealthy"] = healthReport.Entries.Count(e => e.Value.Status != HealthStatus.Healthy)
+                    }
+                };
 
             return healthReport.Status == HealthStatus.Healthy 
-                ? Ok(new { Status = "Ready", Timestamp = DateTime.UtcNow }) 
-                : StatusCode(StatusCodes.Status503ServiceUnavailable, new { Status = "Not Ready", Timestamp = DateTime.UtcNow });
+                ? Ok(response) 
+                : StatusCode(StatusCodes.Status503ServiceUnavailable, response);
         }
 
         /// <summary>
         /// Gets liveness status (useful for Kubernetes liveness probes)
         /// </summary>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Liveness status</returns>
         [HttpGet("live")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        public IActionResult GetLiveness()
+        [ProducesResponseType(typeof(LivenessResponse), StatusCodes.Status200OK)]
+        public IActionResult GetLiveness(CancellationToken cancellationToken)
         {
-            return Ok(new { Status = "Alive", Timestamp = DateTime.UtcNow });
+                            var response = new LivenessResponse
+                {
+                    Status = "Alive",
+                    Timestamp = DateTime.UtcNow
+                };
+
+            return Ok(response);
+        }
+
+        /// <summary>
+        /// Gets startup status (useful for Kubernetes startup probes)
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Startup status</returns>
+        [HttpGet("startup")]
+        [ProducesResponseType(typeof(StartupResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(StartupResponse), StatusCodes.Status503ServiceUnavailable)]
+        public async Task<IActionResult> GetStartup(CancellationToken cancellationToken)
+        {
+            var healthReport = await _healthCheckService.CheckHealthAsync(registration => 
+                registration.Tags.Contains("startup"), cancellationToken: cancellationToken);
+
+            var response = new StartupResponse
+            {
+                Status = healthReport.Status == HealthStatus.Healthy ? "Started" : "Starting",
+                Timestamp = DateTime.UtcNow,
+                StartupTime = DateTime.UtcNow - Process.GetCurrentProcess().StartTime.ToUniversalTime()
+            };
+
+            return healthReport.Status == HealthStatus.Healthy 
+                ? Ok(response) 
+                : StatusCode(StatusCodes.Status503ServiceUnavailable, response);
         }
     }
 }

@@ -1,7 +1,6 @@
-namespace CompanyManager.Application.DTOs
+namespace CompanyManager.Application.DTOs;
+
+public sealed class GetEmployeeByIdRequest
 {
-    public sealed class GetEmployeeByIdRequest
-    {
-        public Guid Id { get; init; }
-    }
+    public Guid Id { get; set; }
 }

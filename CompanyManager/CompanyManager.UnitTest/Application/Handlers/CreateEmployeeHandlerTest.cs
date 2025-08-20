@@ -2,6 +2,7 @@ using CompanyManager.Domain.Interfaces;
 using CompanyManager.Domain.AccessControl;
 using CompanyManager.Domain.Entities;
 using CompanyManager.Application.Handlers;
+using CompanyManager.Application.Commands;
 using CompanyManager.Application.Validators;
 using CompanyManager.UnitTest.Application.TestDouble;
 using CompanyManager.UnitTest.Builders;
@@ -18,7 +19,8 @@ public sealed class CreateEmployeeHandlerTest
              InMemoryEmployeeRepository employees,
              InMemoryUserAccountRepository users,
              InMemoryDepartmentRepository departments,
-             IPasswordHasher hasher, Guid currentUserId)
+             IPasswordHasher hasher,
+             Guid currentUserId)
         BuildSut(Guid existingDepartmentId)
     {
         var employees = new InMemoryEmployeeRepository();
@@ -36,6 +38,7 @@ public sealed class CreateEmployeeHandlerTest
 
         var loggerMock = new Mock<ILogger<CreateEmployeeHandler>>();
         var sut = new CreateEmployeeHandler(_validator, employees, users, departments, hasher, loggerMock.Object);
+        
         return (sut, employees, users, departments, hasher, currentUserId);
     }
 
@@ -45,15 +48,15 @@ public sealed class CreateEmployeeHandlerTest
         var departmentId = Guid.NewGuid();
         var (sut, employees, users, _, hasher, currentUserId) = BuildSut(departmentId);
 
-        var request = CreateEmployeeRequestBuilder.New()
+        var command = CreateEmployeeCommandBuilder.New()
             .WithDepartment(departmentId)
             .Build();
 
-        var employeeId = await sut.Handle(request, currentUserId, CancellationToken.None);
+        var result = await sut.Handle(command, CancellationToken.None, currentUserId);
 
-        employeeId.Should().NotBeEmpty();
+        result.Id.Should().NotBeEmpty();
 
-        var employee = await employees.GetByIdAsync(employeeId, default);
+        var employee = await employees.GetByIdAsync(result.Id, default);
         employee.Should().NotBeNull();
         employee!.FirstName.Should().Be("John");
         employee.LastName.Should().Be("Doe");
@@ -64,7 +67,7 @@ public sealed class CreateEmployeeHandlerTest
 
         // Verify UserAccount is created with same ID as Employee
         var userAccounts = await users.GetAllAsync(default);
-        var userAccount = userAccounts.FirstOrDefault(u => u.EmployeeId == employeeId);
+        var userAccount = userAccounts.FirstOrDefault(u => u.EmployeeId == result.Id);
         userAccount.Should().NotBeNull();
         userAccount!.UserName.Should().Be("john.doe@company.com");
     }
@@ -76,16 +79,16 @@ public sealed class CreateEmployeeHandlerTest
         var managerId = Guid.NewGuid();
         var (sut, employees, users, _, hasher, currentUserId) = BuildSut(departmentId);
 
-        var request = CreateEmployeeRequestBuilder.New()
+        var command = CreateEmployeeCommandBuilder.New()
             .WithDepartment(departmentId)
             .WithManager(managerId)
             .Build();
 
-        var employeeId = await sut.Handle(request, currentUserId, CancellationToken.None);
+        var result = await sut.Handle(command, CancellationToken.None, currentUserId);
 
-        employeeId.Should().NotBeEmpty();
+        result.Id.Should().NotBeEmpty();
 
-        var employee = await employees.GetByIdAsync(employeeId, default);
+        var employee = await employees.GetByIdAsync(result.Id, default);
         employee.Should().NotBeNull();
         employee!.ManagerId.Should().Be(managerId);
         employee.HasManager.Should().BeTrue();
@@ -98,11 +101,11 @@ public sealed class CreateEmployeeHandlerTest
         var unknownDept = Guid.NewGuid();
         var (sut, _, _, _, _, currentUserId) = BuildSut(existingDepartmentId: Guid.NewGuid());
 
-        var request = CreateEmployeeRequestBuilder.New()
+        var command = CreateEmployeeCommandBuilder.New()
             .WithDepartment(unknownDept)
             .Build();
 
-        Func<Task> act = () => sut.Handle(request, currentUserId, default);
+        Func<Task> act = () => sut.Handle(command, default, currentUserId);
 
         await act.Should().ThrowAsync<ArgumentException>()
                  .WithMessage("*department*");
@@ -116,11 +119,11 @@ public sealed class CreateEmployeeHandlerTest
 
         employees.SeedEmail("john.doe@company.com");
 
-        var request = CreateEmployeeRequestBuilder.New()
+        var command = CreateEmployeeCommandBuilder.New()
             .WithDepartment(deptId)
             .Build();
 
-        Func<Task> act = () => sut.Handle(request, currentUserId, default);
+        Func<Task> act = () => sut.Handle(command, default, currentUserId);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
                  .WithMessage("*Email already in use*");
@@ -134,11 +137,11 @@ public sealed class CreateEmployeeHandlerTest
 
         employees.SeedCpf("52998224725");
 
-        var request = CreateEmployeeRequestBuilder.New()
+        var command = CreateEmployeeCommandBuilder.New()
             .WithDepartment(deptId)
             .Build();
 
-        Func<Task> act = () => sut.Handle(request, currentUserId, default);
+        Func<Task> act = () => sut.Handle(command, default, currentUserId);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
                  .WithMessage("*Document number already in use*");
@@ -150,12 +153,12 @@ public sealed class CreateEmployeeHandlerTest
         var deptId = Guid.NewGuid();
         var (sut, _, _, _, _, currentUserId) = BuildSut(deptId);
 
-        var request = CreateEmployeeRequestBuilder.New()
+        var command = CreateEmployeeCommandBuilder.New()
             .WithDepartment(deptId)
             .WithEmail("invalid-email")
             .Build();
 
-        Func<Task> act = () => sut.Handle(request, currentUserId, default);
+        Func<Task> act = () => sut.Handle(command, default, currentUserId);
 
         await act.Should().ThrowAsync<FluentValidation.ValidationException>();
     }
@@ -174,12 +177,12 @@ public sealed class CreateEmployeeHandlerTest
         
         var juniorUserId = juniorUser.Id;
 
-        var request = CreateEmployeeRequestBuilder.New()
+        var command = CreateEmployeeCommandBuilder.New()
             .WithDepartment(departmentId)
             .WithRoleLevel("Manager")
             .Build();
 
-        Func<Task> act = () => sut.Handle(request, juniorUserId, CancellationToken.None);
+        Func<Task> act = () => sut.Handle(command, CancellationToken.None, juniorUserId);
 
         await act.Should().ThrowAsync<UnauthorizedAccessException>()
                  .WithMessage("*cannot create employees with role level 'Manager'*");
@@ -199,16 +202,16 @@ public sealed class CreateEmployeeHandlerTest
         
         var managerUserId = managerUser.Id;
 
-        var request = CreateEmployeeRequestBuilder.New()
+        var command = CreateEmployeeCommandBuilder.New()
             .WithDepartment(departmentId)
             .WithRoleLevel("Senior")
             .Build();
 
-        var employeeId = await sut.Handle(request, managerUserId, CancellationToken.None);
+        var result = await sut.Handle(command, CancellationToken.None, currentUserId);
 
-        employeeId.Should().NotBeEmpty();
+        result.Id.Should().NotBeEmpty();
         
-        var employee = await employees.GetByIdAsync(employeeId, default);
+        var employee = await employees.GetByIdAsync(result.Id, default);
         employee.Should().NotBeNull();
     }
 }

@@ -36,15 +36,18 @@ namespace CompanyManager.Application
             // Register handlers
             services.AddScoped<CreateEmployeeHandler>();
             services.AddScoped<IUpdateEmployeeCommandHandler, UpdateEmployeeCommandHandler>();
+            services.AddScoped<IDeleteEmployeeCommandHandler, DeleteEmployeeCommandHandler>();
             services.AddScoped<ICreateDepartmentCommandHandler, CreateDepartmentCommandHandler>();
             services.AddScoped<IUpdateDepartmentCommandHandler, UpdateDepartmentCommandHandler>();
             services.AddScoped<IDeleteDepartmentCommandHandler, DeleteDepartmentCommandHandler>();
             services.AddScoped<IAuthenticateCommandHandler, AuthenticateCommandHandler>();
             services.AddScoped<IRefreshTokenCommandHandler, RefreshTokenCommandHandler>();
             services.AddScoped<IChangePasswordCommandHandler, ChangePasswordCommandHandler>();
+            services.AddScoped<ILogoutCommandHandler, LogoutCommandHandler>();
 
             // Register query handlers
             services.AddScoped<IGetDepartmentByIdQueryHandler, GetDepartmentByIdQueryHandler>();
+            services.AddScoped<IGetEmployeeByIdQueryHandler, GetEmployeeByIdQueryHandler>();
             services.AddScoped<IListDepartmentsQueryHandler, ListDepartmentsQueryHandler>();
             services.AddScoped<IListEmployeesQueryHandler, ListEmployeesQueryHandler>();
 
@@ -62,6 +65,7 @@ namespace CompanyManager.Application
             services.AddScoped<PasswordHasher>();
             services.AddScoped<CompanyManager.Domain.Interfaces.IPasswordHasher, PasswordHasher>();
             services.AddScoped<IAuthService, AuthService>();
+            services.AddScoped<ICurrentUserService, CurrentUserService>();
 
             return services;
         }
