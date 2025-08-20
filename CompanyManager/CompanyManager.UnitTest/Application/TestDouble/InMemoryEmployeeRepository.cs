@@ -172,5 +172,17 @@ namespace CompanyManager.UnitTest.Application.TestDouble
             // A entidade Employee não tem campo IsActive - retornar total
             return Task.FromResult(_store.Count);
         }
+
+        public Task<IEnumerable<string>> GetDistinctJobTitlesAsync(CancellationToken cancellationToken = default)
+        {
+            var distinctJobTitles = _store.Values
+                .Where(e => !string.IsNullOrWhiteSpace(e.JobTitle))
+                .Select(e => e.JobTitle)
+                .Distinct()
+                .OrderBy(jobTitle => jobTitle)
+                .ToList();
+            
+            return Task.FromResult(distinctJobTitles.AsEnumerable());
+        }
     }
 }

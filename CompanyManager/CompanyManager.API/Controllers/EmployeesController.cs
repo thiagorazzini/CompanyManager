@@ -354,5 +354,6 @@ namespace CompanyManager.API.Controllers
                 return StatusCode(500, new ErrorResponse("An error occurred while deleting the employee"));
             }
         }
+
     }
 }

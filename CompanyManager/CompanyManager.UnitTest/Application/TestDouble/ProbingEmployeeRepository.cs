@@ -127,5 +127,17 @@ namespace CompanyManager.UnitTest.Application.TestDouble
         {
             return Task.FromResult(_store.Count);
         }
+
+        public Task<IEnumerable<string>> GetDistinctJobTitlesAsync(CancellationToken cancellationToken = default)
+        {
+            var distinctJobTitles = _store.Values
+                .Where(e => !string.IsNullOrWhiteSpace(e.JobTitle))
+                .Select(e => e.JobTitle)
+                .Distinct()
+                .OrderBy(title => title)
+                .ToList();
+            
+            return Task.FromResult(distinctJobTitles.AsEnumerable());
+        }
     }
 }

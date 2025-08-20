@@ -237,5 +237,16 @@ namespace CompanyManager.Infrastructure.Repositories
                 .AsNoTracking()
                 .CountAsync(cancellationToken);
         }
+
+        public async Task<IEnumerable<string>> GetDistinctJobTitlesAsync(CancellationToken cancellationToken = default)
+        {
+            return await _context.Employees
+                .AsNoTracking()
+                .Where(e => !string.IsNullOrWhiteSpace(e.JobTitle))
+                .Select(e => e.JobTitle)
+                .Distinct()
+                .OrderBy(jobTitle => jobTitle)
+                .ToListAsync(cancellationToken);
+        }
     }
 }

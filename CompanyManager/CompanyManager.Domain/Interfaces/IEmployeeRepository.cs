@@ -35,5 +35,12 @@ namespace CompanyManager.Domain.Interfaces
         Task<IEnumerable<Employee>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken = default);
         Task<int> GetCountByDepartmentAsync(Guid departmentId, CancellationToken cancellationToken = default);
         Task<int> GetActiveCountAsync(CancellationToken cancellationToken = default);
+        
+        /// <summary>
+        /// Gets all distinct job titles available in the system
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Collection of unique job titles</returns>
+        Task<IEnumerable<string>> GetDistinctJobTitlesAsync(CancellationToken cancellationToken = default);
     }
 }
