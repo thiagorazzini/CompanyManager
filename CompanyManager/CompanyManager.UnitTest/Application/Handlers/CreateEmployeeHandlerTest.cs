@@ -6,6 +6,8 @@ using CompanyManager.Application.Validators;
 using CompanyManager.UnitTest.Application.TestDouble;
 using CompanyManager.UnitTest.Builders;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
+using Moq;
 
 namespace CompanyManager.Application.Handlers;
 public sealed class CreateEmployeeHandlerTest
@@ -33,7 +35,9 @@ public sealed class CreateEmployeeHandlerTest
         // Usar o ID real do usuário criado
         var currentUserId = currentUser.Id;
 
-        var sut = new CreateEmployeeHandler(_validator, employees, users, departments, hasher, null!); // Logger mockado
+        // Criar um mock do logger
+        var loggerMock = new Mock<ILogger<CreateEmployeeHandler>>();
+        var sut = new CreateEmployeeHandler(_validator, employees, users, departments, hasher, loggerMock.Object);
         return (sut, employees, users, departments, hasher, currentUserId);
     }
 
