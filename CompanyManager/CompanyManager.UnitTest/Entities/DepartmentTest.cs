@@ -32,10 +32,10 @@ namespace CompanyManager.UnitTest.Entities
         }
 
         [Theory(DisplayName = "Should reject invalid department names (min length 2)")]
-        [InlineData("")]         // empty
-        [InlineData(" ")]        // whitespace
-        [InlineData("\t\n")]     // whitespace
-        [InlineData("A")]        // too short
+        [InlineData("")]
+        [InlineData(" ")]
+        [InlineData("\t\n")]
+        [InlineData("A")]
         public void Should_Reject_Invalid_Names(string name)
         {
             Action act = () => Department.Create(name);
@@ -87,16 +87,14 @@ namespace CompanyManager.UnitTest.Entities
         {
             var d = Department.Create("Engineering");
 
-            // Deactivate twice: second call should not change UpdatedAt
             d.Deactivate();
             var firstChange = d.UpdatedAt;
-            d.Deactivate(); // no state change
+            d.Deactivate();
             d.UpdatedAt.Should().Be(firstChange);
 
-            // Activate twice: second call should not change UpdatedAt
             d.Activate();
             var secondChange = d.UpdatedAt;
-            d.Activate(); // no state change
+            d.Activate();
             d.UpdatedAt.Should().Be(secondChange);
         }
     }
