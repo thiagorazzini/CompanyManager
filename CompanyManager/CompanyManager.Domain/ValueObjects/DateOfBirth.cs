@@ -15,14 +15,24 @@ namespace CompanyManager.Domain.ValueObjects
             if (date > today)
                 throw new ArgumentOutOfRangeException(nameof(value), "Date of birth cannot be in the future.");
 
+            // Validar idade mínima de 18 anos
+            var age = CalculateAge(date, today);
+            if (age < 18)
+                throw new ArgumentOutOfRangeException(nameof(value), "Person must be at least 18 years old.");
+
             BirthDate = date;
         }
 
         public int AgeInYears(DateTime on)
         {
-            var onDate = on.Date;
-            var age = onDate.Year - BirthDate.Year;
-            if (onDate < BirthDate.AddYears(age)) age--;
+            return CalculateAge(BirthDate, on.Date);
+        }
+
+        private static int CalculateAge(DateTime birthDate, DateTime referenceDate)
+        {
+            var age = referenceDate.Year - birthDate.Year;
+            if (referenceDate < birthDate.AddYears(age)) 
+                age--;
             return age;
         }
         public override string ToString() =>

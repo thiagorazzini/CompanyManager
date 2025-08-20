@@ -7,17 +7,12 @@ namespace CompanyManager.UnitTest.ValueObjects
 {
     public class DateOfBirthTest
     {
-        [Theory(DisplayName = "Should accept past dates (any age) and today")]
-        [InlineData(0)]
-        [InlineData(1)]
-        [InlineData(5)]
-        [InlineData(10)]
-        [InlineData(17)]
+        [Theory(DisplayName = "Should accept past dates for adults (18+ years)")]
         [InlineData(18)]
         [InlineData(25)]
         [InlineData(40)]
         [InlineData(100)]
-        public void Should_Accept_Past_Dates_And_Today(int years)
+        public void Should_Accept_Past_Dates_For_Adults(int years)
         {
             // Arrange
             var date = DateTime.Today.AddYears(-years);
@@ -30,14 +25,21 @@ namespace CompanyManager.UnitTest.ValueObjects
             dob.BirthDate.Should().Be(date);
         }
 
-        [Fact(DisplayName = "Should accept today's date")]
-        public void Should_Accept_Today()
+        [Theory(DisplayName = "Should reject dates for minors (under 18 years)")]
+        [InlineData(0)]
+        [InlineData(1)]
+        [InlineData(5)]
+        [InlineData(10)]
+        [InlineData(17)]
+        public void Should_Reject_Dates_For_Minors(int years)
         {
-            var today = DateTime.Today;
-            var dob = new DateOfBirth(today);
+            // Arrange
+            var date = DateTime.Today.AddYears(-years);
 
-            dob.Should().NotBeNull();
-            dob.BirthDate.Should().Be(today);
+            // Act & Assert
+            Action act = () => new DateOfBirth(date);
+            act.Should().Throw<ArgumentOutOfRangeException>()
+                .WithMessage("*must be at least 18 years old*");
         }
 
         [Fact(DisplayName = "Should throw for future date")]
@@ -50,18 +52,20 @@ namespace CompanyManager.UnitTest.ValueObjects
         [Fact(DisplayName = "Should handle leap day (Feb 29) correctly")]
         public void Should_Handle_Leap_Day()
         {
-            var leap = new DateTime(2012, 2, 29);
+            // Usar uma data de ano bissexto que represente uma pessoa com mais de 18 anos
+            var leap = new DateTime(2000, 2, 29); // Pessoa nascida em 2000 tem mais de 18 anos
             var dob = new DateOfBirth(leap);
 
             dob.Should().NotBeNull();
             dob.BirthDate.Should().Be(leap);
         }
 
-        [Fact(DisplayName = "Should handle month boundary (yesterday vs today)")]
+        [Fact(DisplayName = "Should handle month boundary (yesterday vs today) for adults")]
         public void Should_Handle_Month_Boundaries()
         {
-            var yesterday = DateTime.Today.AddDays(-1);
-            var today = DateTime.Today;
+            // Usar datas que representem pessoas com mais de 18 anos
+            var yesterday = DateTime.Today.AddYears(-20).AddDays(-1);
+            var today = DateTime.Today.AddYears(-20);
 
             var dobY = new DateOfBirth(yesterday);
             var dobT = new DateOfBirth(today);

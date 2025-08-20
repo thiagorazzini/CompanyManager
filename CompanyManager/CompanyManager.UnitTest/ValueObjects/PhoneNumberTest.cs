@@ -1,6 +1,7 @@
 using FluentAssertions;
 using CompanyManager.Domain.ValueObjects;
 using System;
+using System.Linq;
 
 namespace CompanyManager.UnitTest.ValueObjects
 {
@@ -8,7 +9,7 @@ namespace CompanyManager.UnitTest.ValueObjects
     {
 
         [Theory(DisplayName = "Should canonicalize to BR ddi (BR default country)")]
-        [InlineData("(11) 99999-9999", "+5511999999999", "55", "11999999999")] // móvel BR (11 dígitos N(S)N)
+        [InlineData("(11) 99999-9999", "+5511999999999", "55", "11999999999")] // mï¿½vel BR (11 dï¿½gitos N(S)N)
         [InlineData("11 99999-9999", "+5511999999999", "55", "11999999999")]
         [InlineData("11999999999", "+5511999999999", "55", "11999999999")]
         public void Should_Canonicalize_To_E164_BR(string input, string expectedE164, string expectedCc, string expectedNsN)
@@ -64,7 +65,7 @@ namespace CompanyManager.UnitTest.ValueObjects
 
         [Theory(DisplayName = "Should reject too short/too long numbers (generic 8..15 digits)")]
         [InlineData("+55 11 999", "Invalid phone number format")] // curto
-        [InlineData("+999 1234567890123456", "Invalid phone number format")] // >15 dígitos
+        [InlineData("+999 1234567890123456", "Invalid phone number format")] // >15 dï¿½gitos
         public void Should_Reject_Length_Out_Of_Bounds(string input, string partMessage)
         {
             var ex = Assert.Throws<ArgumentException>(() => new PhoneNumber(input));
@@ -131,9 +132,9 @@ namespace CompanyManager.UnitTest.ValueObjects
         public void Should_Expose_Masked()
         {
             var p = new PhoneNumber("11987651234", defaultCountry: "BR");
-            p.Masked.Should().StartWith("+55 11 9");         // mantém DDI e DDD
+            p.Masked.Should().StartWith("+55 11 9");         // mantï¿½m DDI e DDD
             p.Masked.Should().Contain("XXXX");               // parte mascarada
-            p.Masked.Should().EndWith("1234");               // últimos 4 dígitos visíveis
+            p.Masked.Should().EndWith("1234");               // ï¿½ltimos 4 dï¿½gitos visï¿½veis
         }
     }
 }
