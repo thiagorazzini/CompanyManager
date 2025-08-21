@@ -1,17 +1,20 @@
 using CompanyManager.Application.Abstractions;
-using CompanyManager.Application.Commands;
 using CompanyManager.Application.DTOs;
+using CompanyManager.Application.Handlers;
+using CompanyManager.Application.Commands;
 using CompanyManager.Application.Queries;
 using CompanyManager.API.Models;
 using CompanyManager.API.Models.Responses;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Logging;
 
 namespace CompanyManager.API.Controllers
 {
     [ApiController]
-    [Route("api/v1/departments")]
-    [Produces("application/json")]
+    [Route("api/v1/[controller]")]
+    [Authorize]
     public class DepartmentsController : ControllerBase
     {
         private readonly ICreateDepartmentCommandHandler _createDepartmentHandler;
@@ -151,6 +154,7 @@ namespace CompanyManager.API.Controllers
                 var command = new CreateDepartmentCommand
                 {
                     Name = request.Name,
+                    Description = request.Description,
                 };
 
                 var result = await _createDepartmentHandler.Handle(command, cancellationToken);

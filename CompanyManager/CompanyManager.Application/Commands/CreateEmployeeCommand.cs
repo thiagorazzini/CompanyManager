@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace CompanyManager.Application.Commands
 {
@@ -9,11 +10,10 @@ namespace CompanyManager.Application.Commands
         public string Email { get; set; } = string.Empty;
         public string DocumentNumber { get; set; } = string.Empty;
         public string DateOfBirth { get; set; } = string.Empty;
-        public string[] Phones { get; set; } = Array.Empty<string>();
-        public string JobTitle { get; set; } = string.Empty;
+        public List<string> Phones { get; set; } = new();
+        public Guid JobTitleId { get; set; }
         public Guid DepartmentId { get; set; }
-        public Guid? ManagerId { get; set; }
         public string Password { get; set; } = string.Empty;
-        public string RoleLevel { get; set; } = string.Empty;
+        // RoleLevel removido - o nível é determinado pelo JobTitle.HierarchyLevel
     }
 }

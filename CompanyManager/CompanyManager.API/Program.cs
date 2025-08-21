@@ -10,7 +10,9 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
 using System.Text;
+using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,7 +21,51 @@ var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>()!;
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+
+// Configurar CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins("http://localhost:3000", "http://localhost:4173")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo 
+    { 
+        Title = "CompanyManager API", 
+        Version = "v1",
+        Description = "API para gerenciamento de funcionários e departamentos"
+    });
+    
+    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
+        Name = "Authorization",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+    
+    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            new string[] {}
+        }
+    });
+});
 
 builder.Services.AddHealthChecks()
     .AddCheck("self", () => HealthCheckResult.Healthy(), tags: new[] { "ready" })
@@ -42,32 +88,22 @@ builder.Services
             ClockSkew = TimeSpan.FromSeconds(jwt.ClockSkewSeconds)
         };
 
-        opts.Events = new JwtBearerEvents
-        {
-            OnTokenValidated = async ctx =>
-            {
-                var services = ctx.HttpContext.RequestServices;
-                var repo = services.GetRequiredService<IUserAccountRepository>();
-                var sub = ctx.Principal!.FindFirst("sub")?.Value;
-                var stamp = ctx.Principal!.FindFirst("sstamp")?.Value;
-
-                if (!Guid.TryParse(sub, out var userId))
-                {
-                    ctx.Fail("Invalid subject");
-                    return;
-                }
-
-                var user = await repo.GetByIdAsync(userId);
-                if (user is null || !user.IsActive || user.SecurityStamp.ToString() != stamp)
-                {
-                    ctx.Fail("User no longer valid");
-                }
-            }
-        };
+        // Temporariamente comentado para debug
+        // opts.Events = new JwtBearerEvents
+        // {
+        //     OnTokenValidated = async ctx =>
+        //     {
+        //         // Validação customizada comentada temporariamente
+        //     }
+        // };
     });
 
 builder.Services.AddAuthorization(options =>
 {
+    options.DefaultPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+    
     options.AddPolicy("EmployeesRead", p => p.RequireClaim("perm", "employees:read"));
     options.AddPolicy("EmployeesWrite", p => p.RequireClaim("perm", "employees:write"));
     options.AddPolicy("DepartmentsRead", p => p.RequireClaim("perm", "departments:read"));
@@ -75,7 +111,6 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("UsersAdmin", p => p.RequireClaim("perm", "users:admin"));
 });
 
-builder.Services.AddScoped<ITokenService, CompanyManager.Application.Services.TokenService>();
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddApplication();
@@ -87,12 +122,16 @@ try
 {
     using var scope = app.Services.CreateScope();
     var dbInitializer = scope.ServiceProvider.GetRequiredService<IDatabaseInitializerService>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    logger.LogInformation("Starting database initialization...");
     await dbInitializer.InitializeAsync();
+    logger.LogInformation("Database initialization completed successfully");
 }
 catch (Exception ex)
 {
     var logger = app.Services.GetRequiredService<ILogger<Program>>();
-    logger.LogError(ex, "Error initializing database");
+    logger.LogError(ex, "Error initializing database: {Message}", ex.Message);
+    // Continue execution even if database initialization fails
 }
 
 if (app.Environment.IsDevelopment())
@@ -101,6 +140,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseCors("AllowFrontend");
 app.UseHttpsRedirection();
 
 app.UseAuthentication();

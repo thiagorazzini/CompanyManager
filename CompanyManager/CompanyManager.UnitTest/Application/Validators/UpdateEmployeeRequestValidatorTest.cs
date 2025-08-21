@@ -18,7 +18,7 @@ namespace CompanyManager.UnitTest.Application.Validators
                 Email = "jane.doe@company.com",
                 DocumentNumber = "52998224725", // CPF válido
                 PhoneNumbers = new List<string> { "11 99999-9999" },
-                JobTitle = "Senior Developer",
+                JobTitleId = Guid.NewGuid(),
                 DepartmentId = Guid.NewGuid()
             };
         }
@@ -201,17 +201,17 @@ namespace CompanyManager.UnitTest.Application.Validators
             r.IsValid.Should().BeTrue(r.ToString());
         }
 
-        [Fact(DisplayName = "Should require non-empty JobTitle")]
-        public void Should_Require_JobTitle()
+        [Fact(DisplayName = "Should require non-empty JobTitleId")]
+        public void Should_Require_JobTitleId()
         {
             var req = Valid();
-            req.JobTitle = "  ";
+            req.JobTitleId = Guid.Empty;
 
             var v = new UpdateEmployeeRequestValidator();
             var r = v.Validate(req);
 
             r.IsValid.Should().BeFalse();
-            r.Errors.Should().Contain(e => e.PropertyName == nameof(UpdateEmployeeRequest.JobTitle));
+            r.Errors.Should().Contain(e => e.PropertyName == nameof(UpdateEmployeeRequest.JobTitleId));
         }
     }
 }

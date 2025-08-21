@@ -7,13 +7,21 @@ public sealed class GetEmployeeByIdResponse
     public string LastName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string DocumentNumber { get; set; } = string.Empty;
-    public DateTime? DateOfBirth { get; set; }
+    public string DateOfBirth { get; set; } = string.Empty;
     public List<string> PhoneNumbers { get; set; } = new();
-    public string JobTitle { get; set; } = string.Empty;
+    public Guid JobTitleId { get; set; }
+    public string JobTitleName { get; set; } = string.Empty;
     public Guid DepartmentId { get; set; }
-    public string? DepartmentName { get; set; }
-    public Guid? ManagerId { get; set; }
-    public string? ManagerName { get; set; }
+    public string DepartmentName { get; set; } = string.Empty;
+    public List<string> Roles { get; set; } = new();
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
+}
+
+public class JobTitleInfo
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public int HierarchyLevel { get; set; }
+    public string Description { get; set; } = string.Empty;
 }

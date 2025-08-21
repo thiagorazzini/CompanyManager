@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace CompanyManager.Application.Commands
 {
@@ -9,9 +10,9 @@ namespace CompanyManager.Application.Commands
         public string LastName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string DocumentNumber { get; set; } = string.Empty;
-        public string[] Phones { get; set; } = Array.Empty<string>();
-        public string JobTitle { get; set; } = string.Empty;
+        public List<string> Phones { get; set; } = new();
+        public Guid JobTitleId { get; set; }
         public Guid DepartmentId { get; set; }
-        public Guid? ManagerId { get; set; } // Optional manager ID
+        public string? Password { get; set; } // Optional password for updates
     }
 }

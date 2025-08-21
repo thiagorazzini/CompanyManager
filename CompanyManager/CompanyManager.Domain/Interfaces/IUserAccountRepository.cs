@@ -1,4 +1,5 @@
 using CompanyManager.Domain.Entities;
+using CompanyManager.Domain.AccessControl;
 
 namespace CompanyManager.Domain.Interfaces
 {
@@ -26,16 +27,20 @@ namespace CompanyManager.Domain.Interfaces
         Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 
         // Métodos de gerenciamento de conta
-        Task UpdateSecurityStampAsync(Guid id, Guid newSecurityStamp, CancellationToken cancellationToken = default);
-        Task UpdateLastLoginAsync(Guid id, CancellationToken cancellationToken = default);
-        Task IncrementFailedLoginAttemptsAsync(Guid id, CancellationToken cancellationToken = default);
-        Task LockAccountAsync(Guid id, DateTime lockoutEnd, CancellationToken cancellationToken = default);
-        Task UnlockAccountAsync(Guid id, CancellationToken cancellationToken = default);
+        Task<bool> IsLockedOutAsync(Guid id, CancellationToken cancellationToken = default);
+        Task<bool> IsTwoFactorEnabledAsync(Guid id, CancellationToken cancellationToken = default);
+        Task<string?> GetTwoFactorSecretAsync(Guid id, CancellationToken cancellationToken = default);
+        Task<DateTime> GetPasswordChangedAtAsync(Guid id, CancellationToken cancellationToken = default);
+        Task<Guid> GetSecurityStampAsync(Guid id, CancellationToken cancellationToken = default);
+        Task<int> GetAccessFailedCountAsync(Guid id, CancellationToken cancellationToken = default);
+        Task<DateTime?> GetLockoutEndUtcAsync(Guid id, CancellationToken cancellationToken = default);
+        Task<Guid> GetEmployeeIdAsync(Guid id, CancellationToken cancellationToken = default);
+        Task<Guid> GetRoleIdAsync(Guid id, CancellationToken cancellationToken = default);
 
-        // Métodos de consulta em lote
-        Task<IEnumerable<UserAccount>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken = default);
-        Task<int> GetActiveCountAsync(CancellationToken cancellationToken = default);
-        Task<int> GetLockedCountAsync(CancellationToken cancellationToken = default);
-        Task<IEnumerable<UserAccount>> GetUsersByLastLoginDateAsync(DateTime fromDate, CancellationToken cancellationToken = default);
+        // Métodos de validação de permissões
+        Task<bool> HasPermissionAsync(Guid userId, string permission, CancellationToken cancellationToken = default);
+        Task<IEnumerable<string>> GetAllPermissionsAsync(Guid userId, CancellationToken cancellationToken = default);
+        Task<bool> IsSuperUserAsync(Guid userId, CancellationToken cancellationToken = default);
+        Task<HierarchicalRole> GetRoleLevelAsync(Guid userId, CancellationToken cancellationToken = default);
     }
 }

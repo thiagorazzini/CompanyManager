@@ -24,6 +24,16 @@ namespace CompanyManager.Infrastructure.Persistence.Configurations
                 .IsRequired()
                 .HasComment("Stamp de segurança para invalidar tokens");
 
+            // RoleId - agora é uma coluna direta
+            builder.Property(u => u.RoleId)
+                .IsRequired()
+                .HasComment("ID da role do usuário");
+
+            // JobTitleId - link para o cargo do usuário
+            builder.Property(u => u.JobTitleId)
+                .IsRequired()
+                .HasComment("ID do cargo do usuário");
+
             // CreatedAt e UpdatedAt são herdados de BaseEntity
             // PasswordChangedAt é configurado automaticamente
             // AccessFailedCount é configurado automaticamente
@@ -36,10 +46,27 @@ namespace CompanyManager.Infrastructure.Persistence.Configurations
             builder.HasIndex(u => u.SecurityStamp)
                 .HasDatabaseName("IX_UserAccounts_SecurityStamp");
 
-            // Relacionamentos
-            builder.HasMany(u => u.Roles)
+            // Índice para RoleId para melhorar performance de consultas
+            builder.HasIndex(u => u.RoleId)
+                .HasDatabaseName("IX_UserAccounts_RoleId");
+
+            // Índice para JobTitleId para melhorar performance de consultas
+            builder.HasIndex(u => u.JobTitleId)
+                .HasDatabaseName("IX_UserAccounts_JobTitleId");
+
+            // Relacionamento com Role (one-to-one)
+            builder.HasOne<CompanyManager.Domain.AccessControl.Role>()
                 .WithMany()
-                .UsingEntity(j => j.ToTable("UserAccountRoles"));
+                .HasForeignKey(u => u.RoleId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .IsRequired();
+
+            // Relacionamento com JobTitle (one-to-one)
+            builder.HasOne<CompanyManager.Domain.Entities.JobTitle>()
+                .WithMany()
+                .HasForeignKey(u => u.JobTitleId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .IsRequired();
 
             // Configurações de auditoria são herdadas de BaseEntity
         }

@@ -25,10 +25,9 @@ namespace CompanyManager.Infrastructure.Persistence.Configurations
                 .HasMaxLength(100)
                 .HasComment("Sobrenome do funcionário");
 
-            builder.Property(e => e.JobTitle)
+            builder.Property(e => e.JobTitleId)
                 .IsRequired()
-                .HasMaxLength(100)
-                .HasComment("Cargo do funcionário");
+                .HasComment("ID do cargo do funcionário");
 
             // Configurar Value Objects usando conversores
             builder.Property(e => e.Email)
@@ -57,28 +56,24 @@ namespace CompanyManager.Infrastructure.Persistence.Configurations
                 .HasColumnName("DateOfBirth")
                 .HasComment("Data de nascimento do funcionário");
 
-            // Configurar PhoneNumbers como uma propriedade JSON ou tabela separada
-            // Por enquanto, vamos ignorar para simplificar
-            builder.Ignore(e => e.Phones);
+            // Relacionamento com EmployeePhones
+            builder.HasMany(e => e.Phones)
+                .WithOne(p => p.Employee)
+                .HasForeignKey(p => p.EmployeeId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             // Índices
             builder.HasIndex(e => e.DepartmentId)
                 .HasDatabaseName("IX_Employees_DepartmentId");
+            
+            builder.HasIndex(e => e.JobTitleId)
+                .HasDatabaseName("IX_Employees_JobTitleId");
 
             // Relacionamentos
-            builder.HasOne<Department>()
-                .WithMany()
-                .HasForeignKey(e => e.DepartmentId)
-                .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("FK_Employees_Departments");
-
-            // Hierarchy relationship
-            builder.HasOne<Employee>()
-                .WithMany()
-                .HasForeignKey(e => e.ManagerId)
-                .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("FK_Employees_Employees_Manager")
-                .IsRequired(false); // Manager is optional
+            builder.HasOne(e => e.JobTitle)
+                .WithMany(jt => jt.Employees)
+                .HasForeignKey(e => e.JobTitleId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             // Configurações de auditoria são herdadas de BaseEntity
         }

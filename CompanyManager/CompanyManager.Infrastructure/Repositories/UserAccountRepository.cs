@@ -1,5 +1,6 @@
 using CompanyManager.Domain.Entities;
 using CompanyManager.Domain.Interfaces;
+using CompanyManager.Domain.AccessControl;
 using CompanyManager.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,7 +19,6 @@ namespace CompanyManager.Infrastructure.Repositories
         public async Task<UserAccount?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
             return await _context.UserAccounts
-                .Include(u => u.Roles)
                 .FirstOrDefaultAsync(u => u.Id == id && u.IsActive, cancellationToken);
         }
 
@@ -29,7 +29,6 @@ namespace CompanyManager.Infrastructure.Repositories
 
             var normalizedEmail = email.Trim().ToLowerInvariant();
             return await _context.UserAccounts
-                .Include(u => u.Roles)
                 .FirstOrDefaultAsync(u => u.UserName == normalizedEmail && u.IsActive, cancellationToken);
         }
 
@@ -40,14 +39,12 @@ namespace CompanyManager.Infrastructure.Repositories
 
             var normalized = normalizedEmail.Trim().ToLowerInvariant();
             return await _context.UserAccounts
-                .Include(u => u.Roles)
                 .FirstOrDefaultAsync(u => u.UserName == normalized && u.IsActive, cancellationToken);
         }
 
         public async Task<IEnumerable<UserAccount>> GetAllAsync(CancellationToken cancellationToken = default)
         {
             return await _context.UserAccounts
-                .Include(u => u.Roles)
                 .Where(u => u.IsActive)
                 .OrderBy(u => u.UserName)
                 .ToListAsync(cancellationToken);
@@ -56,7 +53,6 @@ namespace CompanyManager.Infrastructure.Repositories
         public async Task<IEnumerable<UserAccount>> GetActiveAsync(CancellationToken cancellationToken = default)
         {
             return await _context.UserAccounts
-                .Include(u => u.Roles)
                 .Where(u => u.IsActive && !u.IsLockedOut)
                 .OrderBy(u => u.UserName)
                 .ToListAsync(cancellationToken);
@@ -65,7 +61,6 @@ namespace CompanyManager.Infrastructure.Repositories
         public async Task<IEnumerable<UserAccount>> GetInactiveAsync(CancellationToken cancellationToken = default)
         {
             return await _context.UserAccounts
-                .Include(u => u.Roles)
                 .Where(u => !u.IsActive)
                 .OrderBy(u => u.UserName)
                 .ToListAsync(cancellationToken);
@@ -77,8 +72,11 @@ namespace CompanyManager.Infrastructure.Repositories
                 return Enumerable.Empty<UserAccount>();
 
             return await _context.UserAccounts
-                .Include(u => u.Roles)
-                .Where(u => u.IsActive && u.Roles.Any(r => r.Name == roleName))
+                .Where(u => u.IsActive)
+                .Join(_context.Roles.Where(r => r.Name == roleName),
+                      u => u.RoleId,
+                      r => r.Id,
+                      (u, r) => u)
                 .OrderBy(u => u.UserName)
                 .ToListAsync(cancellationToken);
         }
@@ -86,8 +84,7 @@ namespace CompanyManager.Infrastructure.Repositories
         public async Task<IEnumerable<UserAccount>> GetLockedAsync(CancellationToken cancellationToken = default)
         {
             return await _context.UserAccounts
-                .Include(u => u.Roles)
-                .Where(u => u.IsLockedOut && u.IsActive)
+                .Where(u => u.IsActive && u.IsLockedOut)
                 .OrderBy(u => u.UserName)
                 .ToListAsync(cancellationToken);
         }
@@ -98,8 +95,11 @@ namespace CompanyManager.Infrastructure.Repositories
                 return Enumerable.Empty<UserAccount>();
 
             return await _context.UserAccounts
-                .Include(u => u.Roles)
-                .Where(u => u.IsActive && u.Roles.Any(r => r.Permissions.Contains(permission, StringComparer.OrdinalIgnoreCase)))
+                .Where(u => u.IsActive)
+                .Join(_context.Roles.Where(r => r.Permissions.Contains(permission)),
+                      u => u.RoleId,
+                      r => r.Id,
+                      (u, r) => u)
                 .OrderBy(u => u.UserName)
                 .ToListAsync(cancellationToken);
         }
@@ -108,7 +108,6 @@ namespace CompanyManager.Infrastructure.Repositories
         public async Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken = default)
         {
             return await _context.UserAccounts
-                .AsNoTracking()
                 .AnyAsync(u => u.Id == id && u.IsActive, cancellationToken);
         }
 
@@ -119,156 +118,164 @@ namespace CompanyManager.Infrastructure.Repositories
 
             var normalizedEmail = email.Trim().ToLowerInvariant();
             return await _context.UserAccounts
-                .AsNoTracking()
                 .AnyAsync(u => u.UserName == normalizedEmail && u.IsActive, cancellationToken);
         }
 
         // Métodos de CRUD
         public async Task AddAsync(UserAccount account, CancellationToken cancellationToken = default)
         {
-            if (account is null)
-                throw new ArgumentNullException(nameof(account));
-
-            _context.UserAccounts.Add(account);
+            if (account is null) throw new ArgumentNullException(nameof(account));
+            await _context.UserAccounts.AddAsync(account, cancellationToken);
             await _context.SaveChangesAsync(cancellationToken);
         }
 
         public async Task UpdateAsync(UserAccount user, CancellationToken cancellationToken = default)
         {
-            if (user is null)
-                throw new ArgumentNullException(nameof(user));
-
+            if (user is null) throw new ArgumentNullException(nameof(user));
             _context.UserAccounts.Update(user);
-            await _context.SaveChangesAsync(cancellationToken);
+            await Task.CompletedTask;
         }
 
         public async Task SaveAsync(UserAccount account, CancellationToken cancellationToken = default)
         {
-            if (account is null)
-                throw new ArgumentNullException(nameof(account));
-
-            if (account.Id == Guid.Empty)
-            {
-                await AddAsync(account, cancellationToken);
-            }
-            else
-            {
-                await UpdateAsync(account, cancellationToken);
-            }
+            if (account is null) throw new ArgumentNullException(nameof(account));
+            await _context.SaveChangesAsync(cancellationToken);
         }
 
         public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            var userAccount = await GetByIdAsync(id, cancellationToken);
-            if (userAccount != null)
+            var user = await GetByIdAsync(id, cancellationToken);
+            if (user != null)
             {
-                userAccount.Deactivate();
+                user.Deactivate();
                 await _context.SaveChangesAsync(cancellationToken);
             }
         }
 
         // Métodos de gerenciamento de conta
-        public async Task UpdateSecurityStampAsync(Guid id, Guid newSecurityStamp, CancellationToken cancellationToken = default)
+        public async Task<bool> IsLockedOutAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            var userAccount = await _context.UserAccounts
-                .FirstOrDefaultAsync(u => u.Id == id && u.IsActive, cancellationToken);
-                
-            if (userAccount != null)
+            var user = await GetByIdAsync(id, cancellationToken);
+            return user?.IsLockedOut ?? false;
+        }
+
+        public async Task<bool> IsTwoFactorEnabledAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            var user = await GetByIdAsync(id, cancellationToken);
+            return user?.TwoFactorEnabled ?? false;
+        }
+
+        public async Task<string?> GetTwoFactorSecretAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            var user = await GetByIdAsync(id, cancellationToken);
+            return user?.TwoFactorSecret;
+        }
+
+        public async Task<DateTime> GetPasswordChangedAtAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            var user = await GetByIdAsync(id, cancellationToken);
+            return user?.PasswordChangedAt ?? DateTime.MinValue;
+        }
+
+        public async Task<Guid> GetSecurityStampAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            var user = await GetByIdAsync(id, cancellationToken);
+            return user?.SecurityStamp ?? Guid.Empty;
+        }
+
+        public async Task<int> GetAccessFailedCountAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            var user = await GetByIdAsync(id, cancellationToken);
+            return user?.AccessFailedCount ?? 0;
+        }
+
+        public async Task<DateTime?> GetLockoutEndUtcAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            var user = await GetByIdAsync(id, cancellationToken);
+            return user?.LockoutEndUtc;
+        }
+
+        public async Task<Guid> GetEmployeeIdAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            var user = await GetByIdAsync(id, cancellationToken);
+            return user?.EmployeeId ?? Guid.Empty;
+        }
+
+        public async Task<Guid> GetRoleIdAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            var user = await GetByIdAsync(id, cancellationToken);
+            return user?.RoleId ?? Guid.Empty;
+        }
+
+        // Métodos de validação de permissões
+        public async Task<bool> HasPermissionAsync(Guid userId, string permission, CancellationToken cancellationToken = default)
+        {
+            var user = await _context.UserAccounts
+                .Where(u => u.Id == userId && u.IsActive)
+                .Join(_context.Roles,
+                      u => u.RoleId,
+                      r => r.Id,
+                      (u, r) => new { User = u, Role = r })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (user == null) return false;
+
+            // SuperUser tem todas as permissões
+            if (user.Role.IsSuperUser()) return true;
+
+            return user.Role.HasPermission(permission);
+        }
+
+        public async Task<IEnumerable<string>> GetAllPermissionsAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            var user = await _context.UserAccounts
+                .Where(u => u.Id == userId && u.IsActive)
+                .Join(_context.Roles,
+                      u => u.RoleId,
+                      r => r.Id,
+                      (u, r) => new { User = u, Role = r })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (user == null) return Enumerable.Empty<string>();
+
+            // SuperUser tem todas as permissões
+            if (user.Role.IsSuperUser())
             {
-                // Usar ChangePassword com hash atual para atualizar apenas SecurityStamp
-                // Isso é um workaround - idealmente a entidade deveria ter um método SetSecurityStamp
-                var currentHash = userAccount.PasswordHash;
-                userAccount.ChangePassword(currentHash);
-                await _context.SaveChangesAsync(cancellationToken);
+                // Retornar todas as permissões possíveis
+                return await _context.Roles
+                    .SelectMany(r => r.Permissions)
+                    .Distinct()
+                    .ToListAsync(cancellationToken);
             }
+
+            return user.Role.Permissions;
         }
 
-        public async Task UpdateLastLoginAsync(Guid id, CancellationToken cancellationToken = default)
+        public async Task<bool> IsSuperUserAsync(Guid userId, CancellationToken cancellationToken = default)
         {
-            var userAccount = await GetByIdAsync(id, cancellationToken);
-            if (userAccount != null)
-            {
-                userAccount.ResetFailuresAfterSuccessfulLogin();
-                await _context.SaveChangesAsync(cancellationToken);
-            }
+            var user = await _context.UserAccounts
+                .Where(u => u.Id == userId && u.IsActive)
+                .Join(_context.Roles,
+                      u => u.RoleId,
+                      r => r.Id,
+                      (u, r) => new { User = u, Role = r })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            return user?.Role.IsSuperUser() ?? false;
         }
 
-        public async Task IncrementFailedLoginAttemptsAsync(Guid id, CancellationToken cancellationToken = default)
+        public async Task<HierarchicalRole> GetRoleLevelAsync(Guid userId, CancellationToken cancellationToken = default)
         {
-            var userAccount = await GetByIdAsync(id, cancellationToken);
-            if (userAccount != null)
-            {
-                userAccount.RecordFailedLoginAttempt(5, TimeSpan.FromMinutes(15)); // 5 tentativas, bloqueio por 15 min
-                await _context.SaveChangesAsync(cancellationToken);
-            }
-        }
+            var user = await _context.UserAccounts
+                .Where(u => u.Id == userId && u.IsActive)
+                .Join(_context.Roles,
+                      u => u.RoleId,
+                      r => r.Id,
+                      (u, r) => new { User = u, Role = r })
+                .FirstOrDefaultAsync(cancellationToken);
 
-        public async Task LockAccountAsync(Guid id, DateTime lockoutEnd, CancellationToken cancellationToken = default)
-        {
-            var userAccount = await _context.UserAccounts
-                .FirstOrDefaultAsync(u => u.Id == id && u.IsActive, cancellationToken);
-                
-            if (userAccount != null)
-            {
-                // Simular bloqueio usando RecordFailedLoginAttempt com muitas tentativas
-                // Isso é um workaround - idealmente a entidade deveria ter um método LockUntil
-                var maxAttempts = 1; // Forçar bloqueio imediato
-                var lockoutDuration = lockoutEnd - DateTime.UtcNow;
-                if (lockoutDuration > TimeSpan.Zero)
-                {
-                    userAccount.RecordFailedLoginAttempt(maxAttempts, lockoutDuration);
-                    await _context.SaveChangesAsync(cancellationToken);
-                }
-            }
-        }
-
-        public async Task UnlockAccountAsync(Guid id, CancellationToken cancellationToken = default)
-        {
-            var userAccount = await GetByIdAsync(id, cancellationToken);
-            if (userAccount != null)
-            {
-                userAccount.UnlockNow();
-                await _context.SaveChangesAsync(cancellationToken);
-            }
-        }
-
-        // Métodos de consulta em lote
-        public async Task<IEnumerable<UserAccount>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken = default)
-        {
-            if (ids == null || !ids.Any())
-                return Enumerable.Empty<UserAccount>();
-
-            return await _context.UserAccounts
-                .Include(u => u.Roles)
-                .Where(u => ids.Contains(u.Id) && u.IsActive)
-                .OrderBy(u => u.UserName)
-                .ToListAsync(cancellationToken);
-        }
-
-        public async Task<int> GetActiveCountAsync(CancellationToken cancellationToken = default)
-        {
-            return await _context.UserAccounts
-                .AsNoTracking()
-                .CountAsync(u => u.IsActive && !u.IsLockedOut, cancellationToken);
-        }
-
-        public async Task<int> GetLockedCountAsync(CancellationToken cancellationToken = default)
-        {
-            return await _context.UserAccounts
-                .AsNoTracking()
-                .CountAsync(u => u.IsLockedOut && u.IsActive, cancellationToken);
-        }
-
-        public async Task<IEnumerable<UserAccount>> GetUsersByLastLoginDateAsync(DateTime fromDate, CancellationToken cancellationToken = default)
-        {
-            // A entidade UserAccount não tem campo LastLoginAt
-            // Retornar usuários ativos ordenados por data de criação como alternativa
-            // Nota: Este método pode precisar ser removido ou a entidade atualizada
-            return await _context.UserAccounts
-                .Include(u => u.Roles)
-                .Where(u => u.IsActive && u.CreatedAt >= fromDate)
-                .OrderByDescending(u => u.CreatedAt)
-                .ToListAsync(cancellationToken);
+            return user?.Role.Level ?? HierarchicalRole.Junior;
         }
     }
 }
+

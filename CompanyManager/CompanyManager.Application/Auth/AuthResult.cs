@@ -7,5 +7,7 @@ namespace CompanyManager.Application.Auth
     /// </summary>
     /// <param name="AccessToken">The JWT access token</param>
     /// <param name="ExpiresAt">When the token expires</param>
-    public sealed record AuthResult(string AccessToken, DateTime ExpiresAt);
+    /// <param name="UserId">The ID of the authenticated user</param>
+    /// <param name="Email">The email of the authenticated user</param>
+    public sealed record AuthResult(string AccessToken, DateTime ExpiresAt, Guid UserId, string Email);
 }

@@ -9,13 +9,13 @@ namespace CompanyManager.Domain.ValueObjects
             new(@"(?i)\b(?:ext\.?|x|ramal)\s*(\d+)\b", RegexOptions.Compiled);
 
         public string Raw { get; }             // entrada original (trimada)
-        public string E164 { get; }            // canônico com DDI, ex.: +5511999999999
+        public string E164 { get; }            // canÃ´nico com DDI, ex.: +5511999999999
         public string CountryCode { get; }     // ex.: "55", "1"
         public string NationalNumber { get; }  // ex.: "11999999999"
         public string? Extension { get; }      // ex.: "1234"
 
         /// <param name="defaultCountry">
-        /// País padrão para quando a entrada não vier com '+'. Ex.: "BR".
+        /// Paï¿½s padrï¿½o para quando a entrada nï¿½o vier com '+'. Ex.: "BR".
         /// </param>
         public PhoneNumber(string value, string? defaultCountry = null)
         {
@@ -29,28 +29,28 @@ namespace CompanyManager.Domain.ValueObjects
 
             var baseWithoutExt = ExtRegex.Replace(trimmed, m =>
             {
-                ext ??= m.Groups[1].Value;   // ok: variável local
+                ext ??= m.Groups[1].Value;   // ok: variï¿½vel local
                 return string.Empty;
             }).Trim();
 
             Extension = ext;
 
-            // '+' deve existir no máximo uma vez e (se existir) deve ser o primeiro caractere
+            // '+' deve existir no mï¿½ximo uma vez e (se existir) deve ser o primeiro caractere
             var plusCount = baseWithoutExt.Count(c => c == '+');
             if (plusCount > 1 || (plusCount == 1 && baseWithoutExt[0] != '+'))
                 throw new ArgumentException("Invalid phone number format", nameof(value));
 
-            // 2) Remove tudo exceto dígitos; preserva a informação se havia '+'
+            // 2) Remove tudo exceto dï¿½gitos; preserva a informaï¿½ï¿½o se havia '+'
             var hasPlus = baseWithoutExt.StartsWith("+");
             var digitsOnly = new string(baseWithoutExt.Where(char.IsDigit).ToArray());
 
             if (hasPlus)
             {
-                // 2a) Com DDI explícito: validar faixa de tamanho total (E.164 = máx. 15)
+                // 2a) Com DDI explï¿½cito: validar faixa de tamanho total (E.164 = mï¿½x. 15)
                 if (digitsOnly.Length < 8 || digitsOnly.Length > 15)
                     throw new ArgumentException("Invalid phone number format", nameof(value));
 
-                // 2b) Separar DDI e número nacional (suporte explícito para +55 e +1; fallback 3 dígitos)
+                // 2b) Separar DDI e nï¿½mero nacional (suporte explï¿½cito para +55 e +1; fallback 3 dï¿½gitos)
                 string cc, nsn;
                 if (digitsOnly.StartsWith("55"))
                 {
@@ -64,7 +64,7 @@ namespace CompanyManager.Domain.ValueObjects
                 }
                 else
                 {
-                    // Fallback genérico: assume DDI de 3 dígitos
+                    // Fallback genï¿½rico: assume DDI de 3 dï¿½gitos
                     cc = digitsOnly.Length > 3 ? digitsOnly[..3] : digitsOnly;
                     nsn = digitsOnly.Length > 3 ? digitsOnly[3..] : string.Empty;
                 }
@@ -82,7 +82,7 @@ namespace CompanyManager.Domain.ValueObjects
                 if (!string.Equals(defaultCountry, "BR", StringComparison.OrdinalIgnoreCase))
                     throw new ArgumentException("Invalid phone number format", nameof(value));
 
-                // Remove formatação e valida BR (DDD + número)
+                // Remove formataï¿½ï¿½o e valida BR (DDD + nï¿½mero)
                 var digits = digitsOnly;
                 if (digits.Length is not (10 or 11))
                     throw new ArgumentException("Invalid phone number format", nameof(value));
@@ -90,17 +90,17 @@ namespace CompanyManager.Domain.ValueObjects
                 var ddd = digits[..2];
                 var subscriber = digits[2..];
 
-                // DDD não pode ser "00"
+                // DDD nï¿½o pode ser "00"
                 if (ddd == "00")
                     throw new ArgumentException("Invalid phone number format", nameof(value));
 
-                // Móvel (11 dígitos): começa com 9
+                // Mï¿½vel (11 dï¿½gitos): comeï¿½a com 9
                 if (digits.Length == 11)
                 {
                     if (subscriber[0] != '9')
                         throw new ArgumentException("Invalid phone number format", nameof(value));
                 }
-                else // Fixo (10 dígitos): não pode iniciar com 0 ou 9 (usa-se 2..8 na prática)
+                else // Fixo (10 dï¿½gitos): nï¿½o pode iniciar com 0 ou 9 (usa-se 2..8 na prï¿½tica)
                 {
                     var first = subscriber[0];
                     if (first == '0' || first == '9')
@@ -113,7 +113,7 @@ namespace CompanyManager.Domain.ValueObjects
             }
         }
 
-        // Representação mascarada amigável (mantém DDI/DDD/últimos 4)
+        // Representaï¿½ï¿½o mascarada amigï¿½vel (mantï¿½m DDI/DDD/ï¿½ltimos 4)
         public string Masked
         {
             get
@@ -127,14 +127,14 @@ namespace CompanyManager.Domain.ValueObjects
                     return $"+55 {ddd} {first}XXXX-{last4}";
                 }
 
-                // Genérico: esconde miolo e mostra últimos 4
+                // Genï¿½rico: esconde miolo e mostra ï¿½ltimos 4
                 return $"+{CountryCode} XXXX-{last4}";
             }
         }
 
         public override string ToString() => E164;
 
-        // Igualdade/Hash por valor canônico (formato com DDI)
+        // Igualdade/Hash por valor canï¿½nico (formato com DDI)
         public override bool Equals(object? obj) => obj is PhoneNumber other && Equals(other);
         public bool Equals(PhoneNumber? other) =>
             other is not null && StringComparer.Ordinal.Equals(E164, other.E164);

@@ -14,8 +14,7 @@ namespace CompanyManager.Application.Mapping.Profiles
                     string.IsNullOrWhiteSpace(src.FirstName) ? string.Empty : src.FirstName.Trim()))
                 .ForMember(dest => dest.LastName, opt => opt.MapFrom(src => 
                     string.IsNullOrWhiteSpace(src.LastName) ? string.Empty : src.LastName.Trim()))
-                .ForMember(dest => dest.JobTitle, opt => opt.MapFrom(src => 
-                    string.IsNullOrWhiteSpace(src.JobTitle) ? string.Empty : src.JobTitle.Trim()))
+                .ForMember(dest => dest.JobTitleId, opt => opt.MapFrom(src => src.JobTitleId))
                 .ForMember(dest => dest.Email, opt => opt.MapFrom(src => 
                     string.IsNullOrWhiteSpace(src.Email) ? string.Empty : src.Email.Trim().ToLowerInvariant()))
                 .ForMember(dest => dest.DocumentNumber, opt => opt.MapFrom(src => 

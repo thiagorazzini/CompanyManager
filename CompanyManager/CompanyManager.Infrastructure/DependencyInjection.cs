@@ -28,9 +28,11 @@ namespace CompanyManager.Infrastructure
                 EntityFrameworkOptions.ConfigureLogging(options, isDevelopment);
             });
 
-            services.AddScoped<IEmployeeRepository, EmployeeRepository>();
-            services.AddScoped<IDepartmentRepository, DepartmentRepository>();
-            services.AddScoped<IUserAccountRepository, UserAccountRepository>();
+                    services.AddScoped<IEmployeeRepository, EmployeeRepository>();
+        services.AddScoped<IDepartmentRepository, DepartmentRepository>();
+        services.AddScoped<IJobTitleRepository, JobTitleRepository>();
+        services.AddScoped<IUserAccountRepository, UserAccountRepository>();
+        services.AddScoped<IRoleRepository, RoleRepository>();
 
             services.AddScoped<IDatabaseInitializerService, DatabaseInitializerService>();
 

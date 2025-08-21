@@ -61,7 +61,7 @@ namespace CompanyManager.Application.Handlers
             var expiresAt = _tokens.GetExpirationUtc();
 
             // 5) Retornar resultado
-            return new AuthResult(accessToken, expiresAt);
+            return new AuthResult(accessToken, expiresAt, user.Id, user.UserName);
         }
     }
 }

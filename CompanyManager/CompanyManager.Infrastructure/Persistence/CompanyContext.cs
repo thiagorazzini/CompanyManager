@@ -12,7 +12,9 @@ namespace CompanyManager.Infrastructure.Persistence
         }
 
         public DbSet<Employee> Employees { get; set; }
+        public DbSet<EmployeePhone> EmployeePhones { get; set; }
         public DbSet<Department> Departments { get; set; }
+        public DbSet<JobTitle> JobTitles { get; set; }
         public DbSet<UserAccount> UserAccounts { get; set; }
         public DbSet<Role> Roles { get; set; }
 
@@ -22,6 +24,13 @@ namespace CompanyManager.Infrastructure.Persistence
 
             // Aplicar todas as configurações de entidades
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(CompanyContext).Assembly);
+
+            // Configuração específica para UserName como Value Object
+            modelBuilder.Entity<UserAccount>()
+                .Property(u => u.UserName)
+                .HasMaxLength(255)
+                .IsRequired()
+                .HasComment("Nome de usuário (email) normalizado");
 
             // Configurações de Value Objects serão feitas nas configurações específicas das entidades
         }

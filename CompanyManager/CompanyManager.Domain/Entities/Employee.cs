@@ -13,25 +13,22 @@ public sealed class Employee : BaseEntity
     public DocumentNumber DocumentNumber { get; private set; } = null!;
     public DateOfBirth DateOfBirth { get; private set; } = default!;
 
-    private readonly List<PhoneNumber> _phones = new();
-    public IReadOnlyCollection<PhoneNumber> Phones => _phones.AsReadOnly();
+    private readonly List<EmployeePhone> _phones = new();
+    public IReadOnlyCollection<EmployeePhone> Phones => _phones.AsReadOnly();
 
-    public string JobTitle { get; private set; } = string.Empty;
-    private static string ValidateJobTitle(string value) =>
-    string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
+    public Guid JobTitleId { get; private set; }
+    public JobTitle? JobTitle { get; private set; } // opcional (navegação EF)
+    private static Guid ValidateJobTitleId(Guid value) =>
+        value == Guid.Empty ? throw new ArgumentException("Job title ID cannot be empty.", nameof(value)) : value;
 
     public Guid DepartmentId { get; private set; }
     public Department? Department { get; private set; } // opcional (navegação EF)
     
     // ---- Hierarchy ----
-    public Guid? ManagerId { get; private set; }
-    public Employee? Manager { get; private set; } // opcional (navegação EF)
-    private readonly List<Employee> _subordinates = new();
-    public IReadOnlyCollection<Employee> Subordinates => _subordinates.AsReadOnly();
-    
+    // ManagerId removido - não há mais hierarquia de managers
     public string FullName => $"{FirstName} {LastName}";
-    public bool HasManager => ManagerId.HasValue;
-    public int HierarchyLevel => CalculateHierarchyLevel();
+    public bool HasManager => false; // Sempre false agora
+    public int HierarchyLevel => 0; // Sempre 0 agora
 
     // ---- EF ctor ----
     private Employee() { }
@@ -42,10 +39,9 @@ public sealed class Employee : BaseEntity
         Email email,
         DocumentNumber documentNumber,
         DateOfBirth dateOfBirth,
-        IEnumerable<PhoneNumber> phones,
-       string jobTitle,
-        Guid departmentId,
-        Guid? managerId = null)
+        IEnumerable<string> phoneNumbers,
+        Guid jobTitleId,
+        Guid departmentId)
     {
         // nomes (sem tocar UpdatedAt)
         FirstName = ValidateFirstName(firstName);
@@ -55,30 +51,24 @@ public sealed class Employee : BaseEntity
         DocumentNumber = documentNumber ?? throw new ArgumentNullException(nameof(documentNumber));
         DateOfBirth = dateOfBirth; // VO já garante não-futuro
 
-        if (phones is null) throw new ArgumentNullException(nameof(phones));
-        var list = phones.ToList();
-        if (list.Count == 0)
-            throw new ArgumentException("At least one phone is required.", nameof(phones));
+        if (phoneNumbers is null) throw new ArgumentNullException(nameof(phoneNumbers));
+        var phoneList = phoneNumbers.ToList();
+        if (phoneList.Count == 0)
+            throw new ArgumentException("At least one phone is required.", nameof(phoneNumbers));
 
-        // adiciona sem alterar UpdatedAt
-        foreach (var p in list)
-            AddPhoneInternal(p);
+        // Criar telefones sem alterar UpdatedAt
+        for (int i = 0; i < phoneList.Count; i++)
+        {
+            var phoneNumber = new PhoneNumber(phoneList[i], "BR");
+            var employeePhone = EmployeePhone.Create(Id, phoneNumber, "Mobile", i == 0); // Primeiro telefone é principal
+            AddPhoneInternal(employeePhone);
+        }
 
-        JobTitle = ValidateJobTitle(jobTitle);
+        JobTitleId = ValidateJobTitleId(jobTitleId);
 
         if (departmentId == Guid.Empty)
             throw new ArgumentException("Invalid department id.", nameof(departmentId));
         DepartmentId = departmentId;
-
-        // Manager assignment
-        if (managerId.HasValue)
-        {
-            if (managerId.Value == Guid.Empty)
-                throw new ArgumentException("Invalid manager id.", nameof(managerId));
-            ManagerId = managerId.Value;
-        }
-
-        // CreatedAt vem da BaseEntity; UpdatedAt permanece nulo na criação
     }
 
     public static Employee Create(
@@ -87,117 +77,100 @@ public sealed class Employee : BaseEntity
         Email email,
         DocumentNumber documentNumber,
         DateOfBirth dateOfBirth,
-        IEnumerable<PhoneNumber> phones,
-        string? jobTitle,
-        Guid departmentId,
-        Guid? managerId = null)
-        => new(firstName, lastName, email, documentNumber, dateOfBirth, phones, jobTitle ?? string.Empty, departmentId, managerId);
+        IEnumerable<string> phoneNumbers,
+        Guid jobTitleId,
+        Guid departmentId)
+        => new(firstName, lastName, email, documentNumber, dateOfBirth, phoneNumbers, jobTitleId, departmentId);
     
-    // ---- Hierarchy Methods ----
+    // ---- Phone Methods ----
     
     /// <summary>
-    /// Assigns a manager to this employee
+    /// Adiciona um novo telefone ao funcionário
     /// </summary>
-    /// <param name="managerId">The ID of the manager to assign</param>
-    /// <exception cref="ArgumentException">Thrown when managerId is empty</exception>
-    /// <exception cref="InvalidOperationException">Thrown when trying to assign the same manager or creating circular references</exception>
-    public void AssignManager(Guid managerId)
+    public void AddPhone(string phoneNumber, string type = "Mobile", bool isPrimary = false)
     {
-        if (managerId == Guid.Empty)
-            throw new ArgumentException("Manager ID cannot be empty.", nameof(managerId));
+        if (string.IsNullOrWhiteSpace(phoneNumber))
+            throw new ArgumentException("Phone number cannot be null or empty.", nameof(phoneNumber));
 
-        if (ManagerId == managerId)
-            throw new InvalidOperationException("Employee already has this manager assigned.");
-
-        // Prevent self-assignment
-        if (managerId == Id)
-            throw new InvalidOperationException("Employee cannot be their own manager.");
-
-        // Prevent circular references (this would be validated at the service level)
-        // but we can check immediate circular reference
-        if (HasSubordinate(managerId))
-            throw new InvalidOperationException("Cannot assign a subordinate as manager (circular reference).");
-
-        // Remove from previous manager's subordinates if any
-        if (ManagerId.HasValue)
-        {
-            // This would be handled by the repository/service layer
-            // For now, we just update the reference
-        }
-
-        ManagerId = managerId;
-        UpdateModifiedAt();
-    }
-
-    /// <summary>
-    /// Removes the current manager from this employee
-    /// </summary>
-    public void RemoveManager()
-    {
-        if (!HasManager) return;
-
-        // Remove from previous manager's subordinates if any
-        if (ManagerId.HasValue)
-        {
-            // This would be handled by the repository/service layer
-            // For now, we just update the reference
-        }
-
-        ManagerId = null;
-        UpdateModifiedAt();
-    }
-
-    /// <summary>
-    /// Adds a subordinate to this employee
-    /// </summary>
-    /// <param name="subordinate">The subordinate employee to add</param>
-    internal void AddSubordinate(Employee subordinate)
-    {
-        if (subordinate is null) return;
-        if (_subordinates.Any(s => s.Id == subordinate.Id)) return;
-
-        _subordinates.Add(subordinate);
-    }
-
-    /// <summary>
-    /// Removes a subordinate from this employee
-    /// </summary>
-    /// <param name="subordinateId">The ID of the subordinate to remove</param>
-    internal void RemoveSubordinate(Guid subordinateId)
-    {
-        var subordinate = _subordinates.FirstOrDefault(s => s.Id == subordinateId);
-        if (subordinate != null)
-        {
-            _subordinates.Remove(subordinate);
-        }
-    }
-
-    /// <summary>
-    /// Checks if this employee has a specific subordinate
-    /// </summary>
-    /// <param name="subordinateId">The ID of the subordinate to check</param>
-    /// <returns>True if the employee has the specified subordinate</returns>
-    public bool HasSubordinate(Guid subordinateId)
-    {
-        return _subordinates.Any(s => s.Id == subordinateId);
-    }
-
-    /// <summary>
-    /// Calculates the hierarchy level of this employee
-    /// </summary>
-    /// <returns>The hierarchy level (0 = top level, 1 = has manager, 2 = manager has manager, etc.)</returns>
-    private int CalculateHierarchyLevel()
-    {
-        if (!HasManager) return 0;
+        var phone = new PhoneNumber(phoneNumber, "BR");
         
-        // For now, we'll use a simple calculation
-        // In a real scenario, you might want to traverse the hierarchy tree
-        // This is a placeholder implementation
-        return 1;
+        // Verificar duplicatas pelo número E164
+        if (_phones.Any(p => p.PhoneNumber.E164 == phone.E164))
+            throw new InvalidOperationException("Cannot add duplicate phone number.");
+
+        // Se este telefone deve ser principal, remover a marcação dos outros
+        if (isPrimary)
+        {
+            foreach (var existingPhone in _phones)
+                existingPhone.SetAsPrimary(false);
+        }
+
+        var employeePhone = EmployeePhone.Create(Id, phone, type, isPrimary);
+        _phones.Add(employeePhone);
+        UpdateModifiedAt();
+    }
+
+    /// <summary>
+    /// Remove um telefone do funcionário
+    /// </summary>
+    public void RemovePhone(Guid phoneId)
+    {
+        var phone = _phones.FirstOrDefault(p => p.Id == phoneId);
+        if (phone is null) return;
+
+        // não permitir ficar sem telefone
+        if (_phones.Count <= 1)
+            throw new InvalidOperationException("Employee must have at least one phone.");
+
+        var removed = _phones.Remove(phone);
+        if (removed)
+            UpdateModifiedAt();
+    }
+
+    /// <summary>
+    /// Atualiza todos os telefones do funcionário
+    /// </summary>
+    public void UpdatePhones(IEnumerable<string> phoneNumbers)
+    {
+        if (phoneNumbers is null) throw new ArgumentNullException(nameof(phoneNumbers));
+        var phoneList = phoneNumbers.ToList();
+        if (phoneList.Count == 0)
+            throw new ArgumentException("At least one phone is required.", nameof(phoneNumbers));
+
+        // Limpar telefones existentes
+        _phones.Clear();
+
+        // Adicionar novos telefones
+        for (int i = 0; i < phoneList.Count; i++)
+        {
+            var phoneNumber = new PhoneNumber(phoneList[i], "BR");
+            var employeePhone = EmployeePhone.Create(Id, phoneNumber, "Mobile", i == 0); // Primeiro é principal
+            _phones.Add(employeePhone);
+        }
+
+        UpdateModifiedAt();
+    }
+
+    /// <summary>
+    /// Define um telefone como principal
+    /// </summary>
+    public void SetPrimaryPhone(Guid phoneId)
+    {
+        var targetPhone = _phones.FirstOrDefault(p => p.Id == phoneId);
+        if (targetPhone is null)
+            throw new ArgumentException("Phone not found.", nameof(phoneId));
+
+        // Remover marcação de principal de todos os telefones
+        foreach (var phone in _phones)
+            phone.SetAsPrimary(false);
+
+        // Marcar o telefone alvo como principal
+        targetPhone.SetAsPrimary(true);
+        UpdateModifiedAt();
     }
 
     // ---- Mutators (atualizam UpdatedAt quando há mudança real) ----
-
+    
     public void ChangeName(string firstName, string lastName)
     {
         var newFirst = ValidateFirstName(firstName);
@@ -210,11 +183,11 @@ public sealed class Employee : BaseEntity
         UpdateModifiedAt();
     }
 
-    public void ChangeJobTitle(string title)
+    public void ChangeJobTitle(Guid jobTitleId)
     {
-        var trimmed = ValidateJobTitle(title);
-        if (trimmed == JobTitle) return;
-        JobTitle = trimmed;
+        var validatedId = ValidateJobTitleId(jobTitleId);
+        if (validatedId == JobTitleId) return;
+        JobTitleId = validatedId;
         UpdateModifiedAt();
     }
 
@@ -245,35 +218,12 @@ public sealed class Employee : BaseEntity
         UpdateModifiedAt();
     }
 
-    public void AddPhone(PhoneNumber phone)
-    {
-        if (phone is null) throw new ArgumentNullException(nameof(phone));
-        if (_phones.Any(p => p == phone))
-            throw new InvalidOperationException("Cannot add duplicate phone.");
-
-        _phones.Add(phone);
-        UpdateModifiedAt();
-    }
-
-    public void RemovePhone(PhoneNumber phone)
-    {
-        if (phone is null) return;
-
-        // não permitir ficar sem telefone
-        if (_phones.Count <= 1 && _phones.Contains(phone))
-            throw new InvalidOperationException("Employee must have at least one phone.");
-
-        var removed = _phones.Remove(phone);
-        if (removed)
-            UpdateModifiedAt();
-    }
-
     // ---- Helpers ----
 
-    private void AddPhoneInternal(PhoneNumber phone)
+    private void AddPhoneInternal(EmployeePhone phone)
     {
         if (phone is null) throw new ArgumentNullException(nameof(phone));
-        if (_phones.Any(p => p == phone))
+        if (_phones.Any(p => p.PhoneNumber.E164 == phone.PhoneNumber.E164))
             throw new InvalidOperationException("Cannot add duplicate phone.");
         _phones.Add(phone);
         // sem UpdateModifiedAt() durante a criação

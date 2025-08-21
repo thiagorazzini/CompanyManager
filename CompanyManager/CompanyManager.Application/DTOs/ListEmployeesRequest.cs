@@ -6,7 +6,7 @@ namespace CompanyManager.Application.DTOs
     {
         public Guid? DepartmentId { get; set; }
         public string? NameContains { get; set; }
-        public string? JobTitle { get; set; }
+        public Guid? JobTitleId { get; set; }
         public int Page { get; set; } = 1;
         public int PageSize { get; set; } = 20;
     }

@@ -34,6 +34,15 @@ namespace CompanyManager.UnitTest.Application.TestDouble
             return LastGeneratedToken;
         }
 
+        public Task<string> GenerateAccessTokenAsync(UserAccount user, CancellationToken cancellationToken = default)
+        {
+            GenerateAccessTokenCalls++;
+            Calls++;                 // mantém compatível com tokens.Calls nos testes
+            LastUserId = user.Id;    // os testes verificam este valor
+            LastGeneratedToken = "stub.jwt.token"; // Token fixo esperado pelos testes
+            return Task.FromResult(LastGeneratedToken);
+        }
+
         public DateTime GetExpirationUtc()
         {
             GetExpirationUtcCalls++;

@@ -15,7 +15,7 @@ namespace CompanyManager.UnitTest.Application.Mapping
             {
                 FirstName = "  John  ",
                 LastName = "  Doe  ",
-                JobTitle = "  Developer  ",
+                JobTitleId = Guid.NewGuid(),
                 Email = "  JOHN.DOE@ACME.COM  ",
                 DocumentNumber = "  12345678901  ",
                 PhoneNumbers = new List<string> { "  (11) 99999-9999  ", null!, "", "  (11) 88888-8888  " },
@@ -27,7 +27,7 @@ namespace CompanyManager.UnitTest.Application.Mapping
             // Act - Manual normalization to demonstrate expected behavior
             var normalizedFirstName = string.IsNullOrWhiteSpace(request.FirstName) ? string.Empty : request.FirstName.Trim();
             var normalizedLastName = string.IsNullOrWhiteSpace(request.LastName) ? string.Empty : request.LastName.Trim();
-            var normalizedJobTitle = string.IsNullOrWhiteSpace(request.JobTitle) ? string.Empty : request.JobTitle.Trim();
+            var normalizedJobTitleId = request.JobTitleId;
             var normalizedEmail = string.IsNullOrWhiteSpace(request.Email) ? string.Empty : request.Email.Trim().ToLowerInvariant();
             var normalizedDocumentNumber = string.IsNullOrWhiteSpace(request.DocumentNumber) ? string.Empty : request.DocumentNumber.Trim();
             var normalizedPhones = request.PhoneNumbers?.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p.Trim()).ToArray() ?? Array.Empty<string>();
@@ -37,7 +37,7 @@ namespace CompanyManager.UnitTest.Application.Mapping
             // Assert
             normalizedFirstName.Should().Be("John");
             normalizedLastName.Should().Be("Doe");
-            normalizedJobTitle.Should().Be("Developer");
+            normalizedJobTitleId.Should().NotBe(Guid.Empty);
             normalizedEmail.Should().Be("john.doe@acme.com");
             normalizedDocumentNumber.Should().Be("12345678901");
             normalizedPhones.Should().BeEquivalentTo(new[] { "(11) 99999-9999", "(11) 88888-8888" });
@@ -55,7 +55,7 @@ namespace CompanyManager.UnitTest.Application.Mapping
                 Id = employeeId,
                 FirstName = "  Jane  ",
                 LastName = "  Smith  ",
-                JobTitle = "  Manager  ",
+                JobTitleId = Guid.NewGuid(),
                 Email = "  JANE.SMITH@ACME.COM  ",
                 DocumentNumber = "  98765432109  ",
                 PhoneNumbers = new List<string> { "  (11) 77777-7777  ", null!, "", "  (11) 66666-6666  " },
@@ -65,7 +65,7 @@ namespace CompanyManager.UnitTest.Application.Mapping
             // Act - Manual normalization to demonstrate expected behavior
             var normalizedFirstName = string.IsNullOrWhiteSpace(request.FirstName) ? string.Empty : request.FirstName.Trim();
             var normalizedLastName = string.IsNullOrWhiteSpace(request.LastName) ? string.Empty : request.LastName.Trim();
-            var normalizedJobTitle = string.IsNullOrWhiteSpace(request.JobTitle) ? string.Empty : request.JobTitle.Trim();
+            var normalizedJobTitleId = request.JobTitleId;
             var normalizedEmail = string.IsNullOrWhiteSpace(request.Email) ? string.Empty : request.Email.Trim().ToLowerInvariant();
             var normalizedDocumentNumber = string.IsNullOrWhiteSpace(request.DocumentNumber) ? string.Empty : request.DocumentNumber.Trim();
             var normalizedPhones = request.PhoneNumbers?.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p.Trim()).ToArray() ?? Array.Empty<string>();
@@ -74,7 +74,7 @@ namespace CompanyManager.UnitTest.Application.Mapping
             request.Id.Should().Be(employeeId);
             normalizedFirstName.Should().Be("Jane");
             normalizedLastName.Should().Be("Smith");
-            normalizedJobTitle.Should().Be("Manager");
+            normalizedJobTitleId.Should().NotBe(Guid.Empty);
             normalizedEmail.Should().Be("jane.smith@acme.com");
             normalizedDocumentNumber.Should().Be("98765432109");
             normalizedPhones.Should().BeEquivalentTo(new[] { "(11) 77777-7777", "(11) 66666-6666" });

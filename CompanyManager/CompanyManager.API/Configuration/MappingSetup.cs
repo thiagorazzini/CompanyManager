@@ -6,10 +6,7 @@ namespace CompanyManager.Api.Configuration
     {
         public static IServiceCollection AddMapping(this IServiceCollection services)
         {
-            services.AddAutoMapper(cfg =>
-            {
-                // Configure AutoMapper profiles here if needed
-            }, AppDomain.CurrentDomain.GetAssemblies());
+            services.AddAutoMapper(cfg => {}, typeof(CompanyManager.Application.DependencyInjection).Assembly);
             return services;
         }
     }

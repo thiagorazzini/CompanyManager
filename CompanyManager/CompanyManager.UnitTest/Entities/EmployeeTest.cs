@@ -14,58 +14,48 @@ namespace CompanyManager.UnitTest.Entities
         private static Guid Dept() => Guid.NewGuid();
 
         private static Employee NewEmployee(
-            string first = "John",
-            string last = "Doe",
+            string firstName = "John",
+            string lastName = "Doe",
             string email = "john.doe@company.com",
-            string cpf = "52998224725",
-            int ageYears = 25,
-            string phone = "11999999999",
-            string jobTitle = "Developer",
-            Guid? managerId = null)
+            string documentNumber = "12345678901",
+            DateTime? dateOfBirth = null,
+            string[] phones = null!)
         {
+            var dob = dateOfBirth ?? new DateTime(1990, 1, 1);
+            var phoneNumbers = phones ?? new[] { "+5511999999999" };
+            
             return Employee.Create(
-                first, last,
+                firstName,
+                lastName,
                 new Email(email),
-                new DocumentNumber(cpf),
-                new DateOfBirth(DateTime.Today.AddYears(-ageYears)),
-                new[] { new PhoneNumber(phone, defaultCountry: "BR") },
-                jobTitle,
+                new DocumentNumber(documentNumber),
+                new DateOfBirth(dob),
+                phoneNumbers.Select(p => new PhoneNumber(p)),
                 Guid.NewGuid(),
-                managerId);
+                Guid.NewGuid());
         }
 
         // ---------- creation ----------
 
-        [Fact(DisplayName = "Should create employee with required value objects")]
-        public void Should_Create_Employee()
+        [Fact]
+        public void Create_ValidData_ShouldCreateEmployeeWithoutManager()
         {
+            // Arrange & Act
             var emp = NewEmployee();
 
-            emp.Id.Should().NotBeEmpty();
-            emp.CreatedAt.Should().BeOnOrBefore(DateTime.UtcNow);
-            emp.UpdatedAt.Should().BeNull();
+            // Assert
+            emp.Should().NotBeNull();
             emp.FirstName.Should().Be("John");
             emp.LastName.Should().Be("Doe");
             emp.Email.Value.Should().Be("john.doe@company.com");
-            emp.DocumentNumber.Digits.Should().Be("52998224725");
-            emp.DateOfBirth.AgeInYears(DateTime.Today).Should().BeGreaterThan(0);
-            emp.Phones.Should().ContainSingle();
-            emp.JobTitle.Should().Be("Developer");
-            emp.DepartmentId.Should().NotBe(Guid.Empty);
-            emp.ManagerId.Should().BeNull();
+            emp.DocumentNumber.Raw.Should().Be("12345678901");
+            emp.DateOfBirth.BirthDate.Should().Be(new DateTime(1990, 1, 1));
+            emp.Phones.Should().HaveCount(1);
+            emp.Phones.First().E164.Should().Be("+5511999999999");
+            emp.JobTitleId.Should().Be(Guid.NewGuid());
+            emp.DepartmentId.Should().Be(Guid.NewGuid());
             emp.HasManager.Should().BeFalse();
             emp.HierarchyLevel.Should().Be(0);
-        }
-
-        [Fact(DisplayName = "Should create employee with manager")]
-        public void Should_Create_Employee_With_Manager()
-        {
-            var managerId = Guid.NewGuid();
-            var emp = NewEmployee(managerId: managerId);
-
-            emp.ManagerId.Should().Be(managerId);
-            emp.HasManager.Should().BeTrue();
-            emp.HierarchyLevel.Should().Be(1);
         }
 
         [Theory(DisplayName = "Should trim and validate names (min length 2)")]
@@ -78,7 +68,7 @@ namespace CompanyManager.UnitTest.Entities
         public void Should_Reject_Invalid_Names(string first, string last)
         {
             Action act = () => Employee.Create(
-                first, last, EmailOf(), Cpf(), DobYearsAgo(), new[] { BrMobile() }, jobTitle: "Developer", Dept());
+                first, last, EmailOf(), Cpf(), DobYearsAgo(), new[] { BrMobile() }, Guid.NewGuid(), Dept());
 
             act.Should().Throw<ArgumentException>().WithMessage("*name*");
         }
@@ -87,7 +77,7 @@ namespace CompanyManager.UnitTest.Entities
         public void Should_Require_AtLeast_One_Phone()
         {
             Action act = () => Employee.Create(
-                "John", "Doe", EmailOf(), Cpf(), DobYearsAgo(), Array.Empty<PhoneNumber>(), jobTitle: "Developer", Dept());
+                "John", "Doe", EmailOf(), Cpf(), DobYearsAgo(), Array.Empty<PhoneNumber>(), Guid.NewGuid(), Dept());
 
             act.Should().Throw<ArgumentException>().WithMessage("*phone*");
         }
@@ -180,13 +170,36 @@ namespace CompanyManager.UnitTest.Entities
         [Fact(DisplayName = "Should change job title and update UpdatedAt")]
         public void Should_Change_JobTitle()
         {
-            var emp = NewEmployee(jobTitle: "Developer");
+            var emp = NewEmployee();
             var before = emp.UpdatedAt;
 
-            emp.ChangeJobTitle("Senior Developer");
+            emp.ChangeJobTitle(Guid.NewGuid());
 
-            emp.JobTitle.Should().Be("Senior Developer");
+            emp.JobTitleId.Should().NotBe(Guid.Empty);
             emp.UpdatedAt.Should().NotBe(before);
+        }
+
+        // ---------- hierarchy ----------
+        
+        [Fact]
+        public void Hierarchy_ShouldAlwaysBeZero()
+        {
+            var emp = NewEmployee();
+            emp.HierarchyLevel.Should().Be(0);
+            emp.HasManager.Should().BeFalse();
+        }
+
+        [Fact]
+        public void ChangeJobTitle_ShouldUpdateJobTitleId()
+        {
+            var emp = NewEmployee();
+            var newJobTitleId = Guid.NewGuid();
+            var beforeUpdatedAt = emp.UpdatedAt;
+
+            emp.ChangeJobTitle(newJobTitleId);
+
+            emp.JobTitleId.Should().Be(newJobTitleId);
+            emp.UpdatedAt.Should().NotBe(beforeUpdatedAt);
         }
     }
 }

@@ -7,6 +7,7 @@ using CompanyManager.API.Models;
 using CompanyManager.API.Models.Responses;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Logging;
 
 namespace CompanyManager.API.Controllers
@@ -14,6 +15,7 @@ namespace CompanyManager.API.Controllers
     [ApiController]
     [Route("api/v1/employees")]
     [Produces("application/json")]
+    [Authorize]
     public class EmployeesController : ControllerBase
     {
         private readonly CreateEmployeeHandler _createEmployeeHandler;
@@ -45,7 +47,7 @@ namespace CompanyManager.API.Controllers
         /// <param name="cancellationToken">Cancellation token</param>
         /// <param name="nameContains">Filter by name (optional)</param>
         /// <param name="departmentId">Filter by department ID (optional)</param>
-        /// <param name="jobTitle">Filter by job title (optional)</param>
+        /// <param name="jobTitleId">Filter by job title ID (optional)</param>
         /// <param name="page">Page number (default: 1)</param>
         /// <param name="pageSize">Page size (default: 20, max: 100)</param>
         /// <returns>Paginated list of employees</returns>
@@ -56,7 +58,7 @@ namespace CompanyManager.API.Controllers
             CancellationToken cancellationToken,
             [FromQuery] string? nameContains = null,
             [FromQuery] Guid? departmentId = null,
-            [FromQuery] string? jobTitle = null,
+            [FromQuery] Guid? jobTitleId = null,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20)
         {
@@ -71,7 +73,7 @@ namespace CompanyManager.API.Controllers
                 {
                     NameContains = nameContains,
                     DepartmentId = departmentId,
-                    JobTitle = jobTitle,
+                    JobTitleId = jobTitleId,
                     Page = page,
                     PageSize = pageSize
                 };
@@ -86,9 +88,9 @@ namespace CompanyManager.API.Controllers
                         FirstName = e.FirstName,
                         LastName = e.LastName,
                         Email = e.Email.Value,
-                        JobTitle = e.JobTitle,
+                        JobTitle = e.JobTitle?.Name ?? string.Empty,
                         DepartmentId = e.DepartmentId,
-                        DepartmentName = null, // TODO: Get department name from department repository
+                        DepartmentName = e.Department?.Name ?? string.Empty,
                         CreatedAt = e.CreatedAt
                     }).ToList(),
                     Pagination = new PaginationInfo
@@ -141,10 +143,12 @@ namespace CompanyManager.API.Controllers
                     Email = result.Email,
                     DocumentNumber = result.DocumentNumber,
                     DateOfBirth = result.DateOfBirth,
-                    PhoneNumbers = result.PhoneNumbers.ToArray(),
-                    JobTitle = result.JobTitle,
+                    PhoneNumbers = result.PhoneNumbers,
+                    JobTitleId = result.JobTitleId,
+                    JobTitleName = result.JobTitleName,
                     DepartmentId = result.DepartmentId,
-                    ManagerId = result.ManagerId,
+                    DepartmentName = result.DepartmentName,
+                    Roles = result.Roles,
                     CreatedAt = result.CreatedAt,
                     UpdatedAt = result.UpdatedAt
                 };
@@ -189,13 +193,21 @@ namespace CompanyManager.API.Controllers
                     Email = request.Email,
                     DocumentNumber = request.DocumentNumber,
                     DateOfBirth = request.DateOfBirth,
-                    Phones = request.PhoneNumbers?.ToArray() ?? Array.Empty<string>(),
-                    JobTitle = request.JobTitle,
+                    Phones = request.PhoneNumbers?.ToList() ?? new List<string>(),
+                    JobTitleId = request.JobTitleId,
                     DepartmentId = request.DepartmentId,
-                    ManagerId = request.ManagerId
+                    Password = request.Password
                 };
 
-                var result = await _createEmployeeHandler.Handle(command, cancellationToken);
+                // Obter o ID do usuário atual para validação hierárquica
+                var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(currentUserId) || !Guid.TryParse(currentUserId, out var userId))
+                {
+                    _logger.LogError("Unable to extract user ID from JWT token");
+                    return Unauthorized(new ErrorResponse("Invalid authentication token"));
+                }
+                
+                var result = await _createEmployeeHandler.Handle(command, cancellationToken, userId);
                 
                 _logger.LogInformation("Employee created successfully. ID: {EmployeeId}, Email: {Email}", 
                     result.Id, request.Email);
@@ -263,13 +275,21 @@ namespace CompanyManager.API.Controllers
                     LastName = request.LastName ?? string.Empty,
                     Email = request.Email ?? string.Empty,
                     DocumentNumber = request.DocumentNumber ?? string.Empty,
-                    Phones = request.PhoneNumbers?.ToArray() ?? Array.Empty<string>(),
-                    JobTitle = request.JobTitle ?? string.Empty,
+                    Phones = request.PhoneNumbers?.ToList() ?? new List<string>(),
+                    JobTitleId = request.JobTitleId,
                     DepartmentId = request.DepartmentId,
-                    ManagerId = request.ManagerId
+                    Password = request.Password
                 };
 
-                await _updateEmployeeHandler.Handle(command, cancellationToken);
+                // Obter o ID do usuário atual para validação hierárquica
+                var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(currentUserId) || !Guid.TryParse(currentUserId, out var userId))
+                {
+                    _logger.LogError("Unable to extract user ID from JWT token");
+                    return Unauthorized(new ErrorResponse("Invalid authentication token"));
+                }
+
+                await _updateEmployeeHandler.Handle(command, cancellationToken, userId);
                 
                 _logger.LogInformation("Employee updated successfully. ID: {EmployeeId}", id);
                                

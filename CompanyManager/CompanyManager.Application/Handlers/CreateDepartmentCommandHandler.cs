@@ -42,7 +42,7 @@ namespace CompanyManager.Application.Handlers
             }
 
             // 1) Criar o departamento (a entidade também valida internamente)
-            var department = Department.Create(cmd.Name);
+            var department = Department.Create(cmd.Name, cmd.Description);
 
             // 2) Persistir
             await _departments.AddAsync(department, ct);

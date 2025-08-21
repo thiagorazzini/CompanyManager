@@ -31,7 +31,7 @@ public sealed class GetEmployeeByIdQueryHandler : IGetEmployeeByIdQueryHandler
 
         _logger.LogInformation("Retrieving employee with ID: {EmployeeId}", request.Id);
 
-        var employee = await _employeeRepository.GetByIdAsync(request.Id, cancellationToken);
+        var employee = await _employeeRepository.GetByIdWithJobTitleAsync(request.Id, cancellationToken);
         if (employee == null)
         {
             _logger.LogInformation("Employee not found with ID: {EmployeeId}", request.Id);
@@ -41,13 +41,6 @@ public sealed class GetEmployeeByIdQueryHandler : IGetEmployeeByIdQueryHandler
 
         var department = await _departmentRepository.GetByIdAsync(employee.DepartmentId, cancellationToken);
         
-        string? managerName = null;
-        if (employee.ManagerId.HasValue)
-        {
-            var manager = await _employeeRepository.GetByIdAsync(employee.ManagerId.Value, cancellationToken);
-            managerName = manager != null ? $"{manager.FirstName} {manager.LastName}" : null;
-        }
-
         var response = new GetEmployeeByIdResponse
         {
             Id = employee.Id,
@@ -55,13 +48,13 @@ public sealed class GetEmployeeByIdQueryHandler : IGetEmployeeByIdQueryHandler
             LastName = employee.LastName,
             Email = employee.Email.Value,
             DocumentNumber = employee.DocumentNumber.Raw,
-            DateOfBirth = employee.DateOfBirth?.BirthDate,
-            PhoneNumbers = employee.Phones.Select(p => p.E164).ToList(),
-            JobTitle = employee.JobTitle,
+            DateOfBirth = employee.DateOfBirth.BirthDate.ToString("yyyy-MM-dd"),
+            PhoneNumbers = employee.Phones.Select(p => p.PhoneNumber.Raw).ToList(),
+            JobTitleId = employee.JobTitle?.Id ?? Guid.Empty,
+            JobTitleName = employee.JobTitle?.Name ?? string.Empty,
             DepartmentId = employee.DepartmentId,
-            DepartmentName = department?.Name,
-            ManagerId = employee.ManagerId,
-            ManagerName = managerName,
+            DepartmentName = department?.Name ?? string.Empty,
+            Roles = new List<string>(), // Roles serão preenchidas pelo controller
             CreatedAt = employee.CreatedAt,
             UpdatedAt = employee.UpdatedAt
         };

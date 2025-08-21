@@ -44,6 +44,9 @@ namespace CompanyManager.UnitTest.Application.TestDouble
         public Task<Employee?> GetByIdAsync(Guid id, CancellationToken ct) =>
             Task.FromResult(_store.TryGetValue(id, out var e) ? e : null);
 
+        public Task<Employee?> GetByIdWithJobTitleAsync(Guid id, CancellationToken ct) =>
+            Task.FromResult(_store.TryGetValue(id, out var e) ? e : null);
+
 
         public Task UpdateAsync(Employee employee, CancellationToken ct)
         {
@@ -83,11 +86,10 @@ namespace CompanyManager.UnitTest.Application.TestDouble
                     e.Email.Value.ToLowerInvariant().Contains(term));
             }
 
-            if (filter.JobTitle != null)
-            {
-                var jt = filter.JobTitle.Trim().ToLowerInvariant();
-                query = query.Where(e => (e.JobTitle ?? string.Empty).ToLowerInvariant().Contains(jt));
-            }
+                    if (filter.JobTitleId.HasValue)
+        {
+            query = query.Where(e => e.JobTitleId == filter.JobTitleId.Value);
+        }
 
             if (filter.DepartmentId.HasValue && filter.DepartmentId.Value != Guid.Empty)
             {
@@ -127,7 +129,8 @@ namespace CompanyManager.UnitTest.Application.TestDouble
 
         public Task<IEnumerable<Employee>> GetByJobTitleAsync(string jobTitle, CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(_store.Values.Where(e => e.JobTitle.Contains(jobTitle ?? "")));
+            // Este método agora busca por nome do JobTitle, não por string direta
+            return Task.FromResult(_store.Values.Where(e => e.JobTitle?.Name.Contains(jobTitle ?? "") == true));
         }
 
         public Task<IEnumerable<Employee>> GetActiveEmployeesAsync(CancellationToken cancellationToken = default)
@@ -176,8 +179,8 @@ namespace CompanyManager.UnitTest.Application.TestDouble
         public Task<IEnumerable<string>> GetDistinctJobTitlesAsync(CancellationToken cancellationToken = default)
         {
             var distinctJobTitles = _store.Values
-                .Where(e => !string.IsNullOrWhiteSpace(e.JobTitle))
-                .Select(e => e.JobTitle)
+                .Where(e => e.JobTitle != null)
+                .Select(e => e.JobTitle.Name)
                 .Distinct()
                 .OrderBy(jobTitle => jobTitle)
                 .ToList();

@@ -1,0 +1,121 @@
+@import './tailwind.css';
+
+/* Global styles */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+        sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+    font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+        monospace;
+}
+
+/* Custom component styles */
+.btn {
+    @apply px-4 py-2 rounded-md font-medium transition-colors duration-200;
+}
+
+.btn-primary {
+    @apply bg-primary-600 text-white hover:bg-primary-700;
+}
+
+.btn-secondary {
+    @apply bg-gray-200 text-gray-800 hover:bg-gray-300;
+}
+
+.btn-outline {
+    @apply border border-gray-300 text-gray-700 hover:bg-gray-50;
+}
+
+.btn-sm {
+    @apply px-2 py-1 text-sm;
+}
+
+.btn-md {
+    @apply px-4 py-2 text-base;
+}
+
+.btn-lg {
+    @apply px-6 py-3 text-lg;
+}
+
+.input-wrapper {
+    @apply w-full;
+}
+
+.input-label {
+    @apply block text-sm font-medium text-gray-700 mb-1;
+}
+
+.required {
+    @apply text-red-500 ml-1;
+}
+
+.input-field {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500;
+}
+
+.input-error {
+    @apply border-red-300 focus:ring-red-500 focus:border-red-500;
+}
+
+.input-error-message {
+    @apply mt-1 text-sm text-red-600;
+}
+
+.toast {
+    @apply p-4 rounded-md shadow-lg;
+}
+
+.toast-success {
+    @apply bg-green-100 text-green-800;
+}
+
+.toast-error {
+    @apply bg-red-100 text-red-800;
+}
+
+.toast-warning {
+    @apply bg-yellow-100 text-yellow-800;
+}
+
+.toast-info {
+    @apply bg-blue-100 text-blue-800;
+}
+
+.toast-message {
+    @apply text-sm font-medium;
+}
+
+.toast-close {
+    @apply ml-2 text-lg font-bold hover:opacity-70;
+}
+
+.page-layout {
+    @apply min-h-screen bg-gray-50;
+}
+
+.page-header {
+    @apply bg-white shadow-sm border-b border-gray-200 px-6 py-4;
+}
+
+.page-header h1 {
+    @apply text-2xl font-bold text-gray-900;
+}
+
+.page-main {
+    @apply flex-1 px-6 py-8;
+}
+
+.page-footer {
+    @apply bg-white border-t border-gray-200 px-6 py-4 text-center text-gray-500;
+}

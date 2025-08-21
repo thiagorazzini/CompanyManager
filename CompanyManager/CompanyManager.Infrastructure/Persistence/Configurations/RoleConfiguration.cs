@@ -19,10 +19,16 @@ namespace CompanyManager.Infrastructure.Persistence.Configurations
                 .HasMaxLength(100)
                 .HasComment("Nome da role");
 
+            // Configurar a propriedade Level
+            builder.Property(r => r.Level)
+                .IsRequired()
+                .HasConversion<int>()
+                .HasComment("Nível hierárquico da role (1=Junior, 2=Pleno, 3=Senior, 4=Manager, 5=Director, 999=SuperUser)");
+
             builder.Property(r => r.Permissions)
                 .HasConversion(
                     v => string.Join(";", v),
-                    v => v.Split(";", StringSplitOptions.RemoveEmptyEntries).ToList())
+                    v => v.Split(";", StringSplitOptions.RemoveEmptyEntries).ToHashSet(StringComparer.OrdinalIgnoreCase))
                 .HasMaxLength(1000)
                 .HasComment("Lista de permissões separadas por ponto e vírgula");
 

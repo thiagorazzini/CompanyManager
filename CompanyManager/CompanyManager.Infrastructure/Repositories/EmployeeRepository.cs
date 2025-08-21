@@ -21,8 +21,31 @@ namespace CompanyManager.Infrastructure.Repositories
         // Métodos de leitura
         public async Task<Employee?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
+            try
+            {
+                // Usar client-side evaluation para evitar problemas de LINQ translation
+                var allEmployees = await _context.Employees
+                    .Include(e => e.JobTitle)
+                    .Include(e => e.Phones)  // ✅ Incluir telefones
+                    .ToListAsync(cancellationToken);
+                
+                return allEmployees.FirstOrDefault(e => e.Id == id);
+            }
+            catch (OperationCanceledException)
+            {
+                // Se a operação foi cancelada, tentar uma abordagem mais simples
+                return await _context.Employees
+                    .Include(e => e.JobTitle)
+                    .Include(e => e.Phones)  // ✅ Incluir telefones
+                    .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
+            }
+        }
+
+        public async Task<Employee?> GetByIdWithJobTitleAsync(Guid id, CancellationToken cancellationToken = default)
+        {
             return await _context.Employees
-                .AsNoTracking()
+                .Include(e => e.JobTitle)
+                .Include(e => e.Phones)  // ✅ Incluir telefones
                 .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
         }
 
@@ -31,9 +54,22 @@ namespace CompanyManager.Infrastructure.Repositories
             if (string.IsNullOrWhiteSpace(email))
                 return null;
 
-            return await _context.Employees
-                .AsNoTracking()
-                .FirstOrDefaultAsync(e => e.Email.Value == email, cancellationToken);
+            try
+            {
+                // Usar client-side evaluation para evitar problemas de LINQ translation
+                var allEmployees = await _context.Employees
+                    .AsNoTracking()
+                    .ToListAsync(cancellationToken);
+                
+                return allEmployees.FirstOrDefault(e => e.Email.Value == email);
+            }
+            catch (OperationCanceledException)
+            {
+                // Se a operação foi cancelada, tentar uma abordagem mais simples
+                return await _context.Employees
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(e => e.Email.Value == email, cancellationToken);
+            }
         }
 
         public async Task<Employee?> GetByDocumentAsync(string documentNumber, CancellationToken cancellationToken = default)
@@ -41,28 +77,72 @@ namespace CompanyManager.Infrastructure.Repositories
             if (string.IsNullOrWhiteSpace(documentNumber))
                 return null;
 
-            return await _context.Employees
-                .AsNoTracking()
-                .FirstOrDefaultAsync(e => e.DocumentNumber.Digits == documentNumber || e.DocumentNumber.Raw == documentNumber, cancellationToken);
+            try
+            {
+                // Usar client-side evaluation para evitar problemas de LINQ translation
+                var allEmployees = await _context.Employees
+                    .AsNoTracking()
+                    .ToListAsync(cancellationToken);
+                
+                return allEmployees.FirstOrDefault(e => e.DocumentNumber.Digits == documentNumber || e.DocumentNumber.Raw == documentNumber);
+            }
+            catch (OperationCanceledException)
+            {
+                // Se a operação foi cancelada, tentar uma abordagem mais simples
+                return await _context.Employees
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(e => e.DocumentNumber.Digits == documentNumber || e.DocumentNumber.Raw == documentNumber, cancellationToken);
+            }
         }
 
         public async Task<IEnumerable<Employee>> GetAllAsync(CancellationToken cancellationToken = default)
         {
-            return await _context.Employees
-                .AsNoTracking()
-                .OrderBy(e => e.FirstName)
-                .ThenBy(e => e.LastName)
-                .ToListAsync(cancellationToken);
+            try
+            {
+                // Usar client-side evaluation para evitar problemas de LINQ translation
+                var allEmployees = await _context.Employees
+                    .AsNoTracking()
+                    .ToListAsync(cancellationToken);
+                
+                return allEmployees
+                    .OrderBy(e => e.FirstName)
+                    .ThenBy(e => e.LastName);
+            }
+            catch (OperationCanceledException)
+            {
+                // Se a operação foi cancelada, tentar uma abordagem mais simples
+                return await _context.Employees
+                    .AsNoTracking()
+                    .OrderBy(e => e.FirstName)
+                    .ThenBy(e => e.LastName)
+                    .ToListAsync(cancellationToken);
+            }
         }
 
         public async Task<IEnumerable<Employee>> GetByDepartmentAsync(Guid departmentId, CancellationToken cancellationToken = default)
         {
-            return await _context.Employees
-                .AsNoTracking()
-                .Where(e => e.DepartmentId == departmentId)
-                .OrderBy(e => e.FirstName)
-                .ThenBy(e => e.LastName)
-                .ToListAsync(cancellationToken);
+            try
+            {
+                // Usar client-side evaluation para evitar problemas de LINQ translation
+                var allEmployees = await _context.Employees
+                    .AsNoTracking()
+                    .ToListAsync(cancellationToken);
+                
+                return allEmployees
+                    .Where(e => e.DepartmentId == departmentId)
+                    .OrderBy(e => e.FirstName)
+                    .ThenBy(e => e.LastName);
+            }
+            catch (OperationCanceledException)
+            {
+                // Se a operação foi cancelada, tentar uma abordagem mais simples
+                return await _context.Employees
+                    .AsNoTracking()
+                    .Where(e => e.DepartmentId == departmentId)
+                    .OrderBy(e => e.FirstName)
+                    .ThenBy(e => e.LastName)
+                    .ToListAsync(cancellationToken);
+            }
         }
 
         public async Task<IEnumerable<Employee>> GetByJobTitleAsync(string jobTitle, CancellationToken cancellationToken = default)
@@ -70,12 +150,32 @@ namespace CompanyManager.Infrastructure.Repositories
             if (string.IsNullOrWhiteSpace(jobTitle))
                 return Enumerable.Empty<Employee>();
 
-            return await _context.Employees
-                .AsNoTracking()
-                .Where(e => e.JobTitle.Contains(jobTitle))
-                .OrderBy(e => e.FirstName)
-                .ThenBy(e => e.LastName)
-                .ToListAsync(cancellationToken);
+            try
+            {
+                // Usar client-side evaluation para evitar problemas de LINQ translation
+                var allEmployees = await _context.Employees
+                    .AsNoTracking()
+                    .Include(e => e.JobTitle)
+                    .Include(e => e.Phones)  // ✅ Incluir telefones
+                    .ToListAsync(cancellationToken);
+                
+                return allEmployees
+                    .Where(e => e.JobTitle != null && e.JobTitle.Name.Contains(jobTitle))
+                    .OrderBy(e => e.FirstName)
+                    .ThenBy(e => e.LastName);
+            }
+            catch (OperationCanceledException)
+            {
+                // Se a operação foi cancelada, tentar uma abordagem mais simples
+                return await _context.Employees
+                    .AsNoTracking()
+                    .Include(e => e.JobTitle)
+                    .Include(e => e.Phones)  // ✅ Incluir telefones
+                    .Where(e => e.JobTitle != null && e.JobTitle.Name.Contains(jobTitle))
+                    .OrderBy(e => e.FirstName)
+                    .ThenBy(e => e.LastName)
+                    .ToListAsync(cancellationToken);
+            }
         }
 
         public async Task<IEnumerable<Employee>> GetActiveEmployeesAsync(CancellationToken cancellationToken = default)
@@ -100,20 +200,28 @@ namespace CompanyManager.Infrastructure.Repositories
         public async Task<(IReadOnlyList<Employee> Items, int Total)> SearchAsync(
             EmployeeFilter filter, PageRequest page, CancellationToken cancellationToken = default)
         {
-            var query = _context.Employees.AsNoTracking();
+            var query = _context.Employees
+                .AsNoTracking()
+                .Include(e => e.JobTitle)
+                .Include(e => e.Department)
+                .Include(e => e.Phones)  // ✅ Incluir telefones
+                .AsQueryable();
 
             // Aplicar filtros
-            if (filter.DepartmentId.HasValue)
+            if (filter.DepartmentId.HasValue && filter.DepartmentId.Value != Guid.Empty)
                 query = query.Where(e => e.DepartmentId == filter.DepartmentId.Value);
 
             if (!string.IsNullOrWhiteSpace(filter.NameOrEmail))
             {
                 var searchTerm = filter.NameOrEmail.ToLowerInvariant();
                 query = query.Where(e =>
-                    e.FirstName.ToLower().Contains(searchTerm) ||
-                    e.LastName.ToLower().Contains(searchTerm) ||
-                    e.Email.Value.ToLower().Contains(searchTerm));
+                    EF.Functions.Like(e.FirstName.ToLower(), $"%{searchTerm}%") ||
+                    EF.Functions.Like(e.LastName.ToLower(), $"%{searchTerm}%") ||
+                    EF.Functions.Like(e.Email.Value, $"%{searchTerm}%"));
             }
+
+            if (filter.JobTitleId.HasValue)
+                query = query.Where(e => e.JobTitleId == filter.JobTitleId.Value);
 
             // Contar total
             var total = await query.CountAsync(cancellationToken);
@@ -132,9 +240,22 @@ namespace CompanyManager.Infrastructure.Repositories
         // Métodos de verificação de existência
         public async Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            return await _context.Employees
-                .AsNoTracking()
-                .AnyAsync(e => e.Id == id, cancellationToken);
+            try
+            {
+                // Usar client-side evaluation para evitar problemas de LINQ translation
+                var allEmployees = await _context.Employees
+                    .AsNoTracking()
+                    .ToListAsync(cancellationToken);
+                
+                return allEmployees.Any(e => e.Id == id);
+            }
+            catch (OperationCanceledException)
+            {
+                // Se a operação foi cancelada, tentar uma abordagem mais simples
+                return await _context.Employees
+                    .AsNoTracking()
+                    .AnyAsync(e => e.Id == id, cancellationToken);
+            }
         }
 
         public async Task<bool> ExistsByEmailAsync(string email, CancellationToken cancellationToken = default)
@@ -142,9 +263,22 @@ namespace CompanyManager.Infrastructure.Repositories
             if (string.IsNullOrWhiteSpace(email))
                 return false;
 
-            return await _context.Employees
-                .AsNoTracking()
-                .AnyAsync(e => e.Email.Value == email, cancellationToken);
+            try
+            {
+                // Usar client-side evaluation para evitar problemas de LINQ translation
+                var allEmployees = await _context.Employees
+                    .AsNoTracking()
+                    .ToListAsync(cancellationToken);
+                
+                return allEmployees.Any(e => e.Email.Value == email);
+            }
+            catch (OperationCanceledException)
+            {
+                // Se a operação foi cancelada, tentar uma abordagem mais simples
+                return await _context.Employees
+                    .AsNoTracking()
+                    .CountAsync(e => e.Email.Value == email, cancellationToken) > 0;
+            }
         }
 
         public async Task<bool> ExistsByDocumentAsync(string documentNumber, CancellationToken cancellationToken = default)
@@ -152,9 +286,22 @@ namespace CompanyManager.Infrastructure.Repositories
             if (string.IsNullOrWhiteSpace(documentNumber))
                 return false;
 
-            return await _context.Employees
-                .AsNoTracking()
-                .AnyAsync(e => e.DocumentNumber.Digits == documentNumber || e.DocumentNumber.Raw == documentNumber, cancellationToken);
+            try
+            {
+                // Usar client-side evaluation para evitar problemas de LINQ translation
+                var allEmployees = await _context.Employees
+                    .AsNoTracking()
+                    .ToListAsync(cancellationToken);
+                
+                return allEmployees.Any(e => e.DocumentNumber.Raw == documentNumber);
+            }
+            catch (OperationCanceledException)
+            {
+                // Se a operação foi cancelada, tentar uma abordagem mais simples
+                return await _context.Employees
+                    .AsNoTracking()
+                    .CountAsync(e => e.DocumentNumber.Raw == documentNumber, cancellationToken) > 0;
+            }
         }
 
         public async Task<bool> EmailExistsAsync(string normalizedEmail, CancellationToken cancellationToken = default)
@@ -162,9 +309,22 @@ namespace CompanyManager.Infrastructure.Repositories
             if (string.IsNullOrWhiteSpace(normalizedEmail))
                 return false;
 
-            return await _context.Employees
-                .AsNoTracking()
-                .AnyAsync(e => e.Email.Value.ToLower() == normalizedEmail.ToLower(), cancellationToken);
+            try
+            {
+                // Usar client-side evaluation para evitar problemas de LINQ translation
+                var allEmployees = await _context.Employees
+                    .AsNoTracking()
+                    .ToListAsync(cancellationToken);
+                
+                return allEmployees.Any(e => e.Email.Value == normalizedEmail);
+            }
+            catch (OperationCanceledException)
+            {
+                // Se a operação foi cancelada, tentar uma abordagem mais simples
+                return await _context.Employees
+                    .AsNoTracking()
+                    .CountAsync(e => e.Email.Value == normalizedEmail, cancellationToken) > 0;
+            }
         }
 
         public async Task<bool> CpfExistsAsync(string cpfDigitsOnly, CancellationToken cancellationToken = default)
@@ -172,9 +332,22 @@ namespace CompanyManager.Infrastructure.Repositories
             if (string.IsNullOrWhiteSpace(cpfDigitsOnly))
                 return false;
 
-            return await _context.Employees
-                .AsNoTracking()
-                .AnyAsync(e => e.DocumentNumber.Digits == cpfDigitsOnly, cancellationToken);
+            try
+            {
+                // Usar client-side evaluation para evitar problemas de LINQ translation
+                var allEmployees = await _context.Employees
+                    .AsNoTracking()
+                    .ToListAsync(cancellationToken);
+                
+                return allEmployees.Any(e => e.DocumentNumber.Raw == cpfDigitsOnly);
+            }
+            catch (OperationCanceledException)
+            {
+                // Se a operação foi cancelada, tentar uma abordagem mais simples
+                return await _context.Employees
+                    .AsNoTracking()
+                    .CountAsync(e => e.DocumentNumber.Raw == cpfDigitsOnly, cancellationToken) > 0;
+            }
         }
 
         // Métodos de CRUD
@@ -214,39 +387,102 @@ namespace CompanyManager.Infrastructure.Repositories
             if (ids == null || !ids.Any())
                 return Enumerable.Empty<Employee>();
 
-            return await _context.Employees
-                .AsNoTracking()
-                .Where(e => ids.Contains(e.Id))
-                .OrderBy(e => e.FirstName)
-                .ThenBy(e => e.LastName)
-                .ToListAsync(cancellationToken);
+            try
+            {
+                // Usar client-side evaluation para evitar problemas de LINQ translation
+                var allEmployees = await _context.Employees
+                    .AsNoTracking()
+                    .ToListAsync(cancellationToken);
+                
+                return allEmployees
+                    .Where(e => ids.Contains(e.Id))
+                    .OrderBy(e => e.FirstName)
+                    .ThenBy(e => e.LastName);
+            }
+            catch (OperationCanceledException)
+            {
+                // Se a operação foi cancelada, tentar uma abordagem mais simples
+                return await _context.Employees
+                    .AsNoTracking()
+                    .Where(e => ids.Contains(e.Id))
+                    .OrderBy(e => e.FirstName)
+                    .ThenBy(e => e.LastName)
+                    .ToListAsync(cancellationToken);
+            }
         }
 
         public async Task<int> GetCountByDepartmentAsync(Guid departmentId, CancellationToken cancellationToken = default)
         {
-            return await _context.Employees
-                .AsNoTracking()
-                .CountAsync(e => e.DepartmentId == departmentId, cancellationToken);
+            try
+            {
+                // Usar client-side evaluation para evitar problemas de LINQ translation
+                var allEmployees = await _context.Employees
+                    .AsNoTracking()
+                    .ToListAsync(cancellationToken);
+                
+                return allEmployees.Count(e => e.DepartmentId == departmentId);
+            }
+            catch (OperationCanceledException)
+            {
+                // Se a operação foi cancelada, tentar uma abordagem mais simples
+                return await _context.Employees
+                    .AsNoTracking()
+                    .CountAsync(e => e.DepartmentId == departmentId, cancellationToken);
+            }
         }
 
         public async Task<int> GetActiveCountAsync(CancellationToken cancellationToken = default)
         {
             // A entidade Employee não tem campo IsActive
             // Retornar total de funcionários
-            return await _context.Employees
-                .AsNoTracking()
-                .CountAsync(cancellationToken);
+            try
+            {
+                // Usar client-side evaluation para evitar problemas de LINQ translation
+                var allEmployees = await _context.Employees
+                    .AsNoTracking()
+                    .ToListAsync(cancellationToken);
+                
+                return allEmployees.Count;
+            }
+            catch (OperationCanceledException)
+            {
+                // Se a operação foi cancelada, tentar uma abordagem mais simples
+                return await _context.Employees
+                    .AsNoTracking()
+                    .CountAsync(cancellationToken);
+            }
         }
 
         public async Task<IEnumerable<string>> GetDistinctJobTitlesAsync(CancellationToken cancellationToken = default)
         {
-            return await _context.Employees
-                .AsNoTracking()
-                .Where(e => !string.IsNullOrWhiteSpace(e.JobTitle))
-                .Select(e => e.JobTitle)
-                .Distinct()
-                .OrderBy(jobTitle => jobTitle)
-                .ToListAsync(cancellationToken);
+            try
+            {
+                // Usar client-side evaluation para evitar problemas de LINQ translation
+                var allEmployees = await _context.Employees
+                    .AsNoTracking()
+                    .Include(e => e.JobTitle)
+                    .Include(e => e.Phones)  // ✅ Incluir telefones
+                    .ToListAsync(cancellationToken);
+                
+                return allEmployees
+                    .Where(e => e.JobTitle != null)
+                    .Select(e => e.JobTitle.Name)
+                    .Distinct()
+                    .OrderBy(jobTitle => jobTitle);
+            }
+            catch (OperationCanceledException)
+            {
+                // Se a operação foi cancelada, tentar uma abordagem mais simples
+                return await _context.Employees
+                    .AsNoTracking()
+                    .Include(e => e.JobTitle)
+                    .Include(e => e.Phones)  // ✅ Incluir telefones
+                    .Where(e => e.JobTitle != null)
+                    .Select(e => e.JobTitle.Name)
+                    .Distinct()
+                    .OrderBy(jobTitle => jobTitle)
+                    .ToListAsync(cancellationToken);
+            }
         }
     }
 }

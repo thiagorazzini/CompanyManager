@@ -1,6 +1,6 @@
 using CompanyManager.Application.DTOs;
 using CompanyManager.Domain.ValueObjects;
-using CompanyManager.Domain.AccessControl;
+// using CompanyManager.Domain.AccessControl; - removido, não é mais necessário
 using FluentValidation;
 using System.Globalization;
 using System;
@@ -58,92 +58,163 @@ public sealed class CreateEmployeeRequestValidator : AbstractValidator<CreateEmp
             .Matches("[A-Z]").WithMessage("Password must have an uppercase letter.")
             .Matches(@"\d").WithMessage("Password must have a digit.");
 
+        RuleFor(x => x.JobTitleId)
+            .Must(id => id != Guid.Empty).WithMessage("Job title is required.");
+
         RuleFor(x => x.DepartmentId)
             .Must(id => id != Guid.Empty).WithMessage("DepartmentId is required.");
 
-        RuleFor(x => x.ManagerId)
-            .Must(id => !id.HasValue || id.Value != Guid.Empty)
-            .WithMessage("ManagerId cannot be empty if provided.");
-
-        RuleFor(x => x.RoleLevel)
-            .NotEmpty().WithMessage("Role level is required.")
-            .Must(IsValidRoleLevel).WithMessage("Invalid role level. Must be one of: Junior, Pleno, Senior, Manager, Director.");
+        // RoleLevel removido - o nível é determinado pelo JobTitle.HierarchyLevel
     }
 
     // ------------ Helpers (Clean Code) ------------
 
-    private static bool HasMinTrimmedLength(string? text, int minLength) =>
-        !string.IsNullOrWhiteSpace(text) && text.Trim().Length >= minLength;
+    private static bool HasMinTrimmedLength(string? text, int minLength)
+    {
+        try
+        {
+            var trimmed = text?.Trim() ?? string.Empty;
+            return trimmed.Length >= minLength;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 
     private static bool IsValidEmailFormat(string? emailText)
     {
-        var normalized = emailText?.Trim() ?? string.Empty;
-        return TryConstruct(() => new Email(normalized));
+        try
+        {
+            var normalized = emailText?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(normalized))
+                return false;
+                
+            var email = new Email(normalized);
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
     }
 
     private static bool IsValidCpfNumber(string? documentText)
     {
-        var normalized = documentText?.Trim() ?? string.Empty;
-        return TryConstruct(() => new DocumentNumber(normalized));
+        try
+        {
+            var normalized = documentText?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(normalized))
+                return false;
+                
+            var document = new DocumentNumber(normalized);
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
     }
 
     private static bool IsValidBrazilianPhoneNumber(string? phoneText)
     {
-        var normalized = phoneText?.Trim() ?? string.Empty;
-        return TryConstruct(() => new PhoneNumber(normalized, defaultCountry: "BR"));
+        try
+        {
+            var normalized = phoneText?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(normalized))
+                return false;
+                
+            var phone = new PhoneNumber(normalized, defaultCountry: "BR");
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
     }
 
-    private static bool IsValidDateInYyyyMmDdFormat(string? dateText) =>
-        TryParseDateYyyyMmDd(dateText, out _);
+    private static bool IsValidDateInYyyyMmDdFormat(string? dateText)
+    {
+        try
+        {
+            return TryParseDateYyyyMmDd(dateText, out _);
+        }
+        catch
+        {
+            return false;
+        }
+    }
 
-    private static bool IsNotInFuture(string? dateText) =>
-        TryParseDateYyyyMmDd(dateText, out var date) && date <= DateTime.Today;
+    private static bool IsNotInFuture(string? dateText)
+    {
+        try
+        {
+            return TryParseDateYyyyMmDd(dateText, out var date) && date <= DateTime.Today;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 
     private static bool IsAtLeast18YearsOld(string? dateText)
     {
-        if (!TryParseDateYyyyMmDd(dateText, out var birthDate))
-            return false;
+        try
+        {
+            if (!TryParseDateYyyyMmDd(dateText, out var birthDate))
+                return false;
 
-        var today = DateTime.Today;
-        var age = today.Year - birthDate.Year;
-        
-        // Se ainda não fez aniversário este ano, subtrai 1
-        if (birthDate.Date > today.AddYears(-age))
-            age--;
+            var today = DateTime.Today;
+            var age = today.Year - birthDate.Year;
             
-        return age >= 18;
+            // Se ainda não fez aniversário este ano, subtrai 1
+            if (birthDate.Date > today.AddYears(-age))
+                age--;
+                
+            return age >= 18;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static bool TryParseDateYyyyMmDd(string? dateText, out DateTime date)
     {
-        var normalized = dateText?.Trim();
-        if (string.IsNullOrWhiteSpace(normalized))
+        try
+        {
+            var normalized = dateText?.Trim();
+            if (string.IsNullOrWhiteSpace(normalized))
+            {
+                date = default;
+                return false;
+            }
+
+            return DateTime.TryParseExact(
+                normalized,
+                DateFormat,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out date);
+        }
+        catch
         {
             date = default;
             return false;
         }
-
-        return DateTime.TryParseExact(
-            normalized,
-            DateFormat,
-            CultureInfo.InvariantCulture,
-            DateTimeStyles.None,
-            out date);
     }
 
-    private static bool IsValidRoleLevel(string? roleLevel)
-    {
-        if (string.IsNullOrWhiteSpace(roleLevel)) return false;
-        
-        return Enum.TryParse<HierarchicalRole>(roleLevel, true, out _);
-    }
-
-    /// <summary>
-    /// Tenta construir um Value Object e retorna true/false sem propagar exceção.
-    /// </summary>
-    private static bool TryConstruct<T>(Func<T> factory)
-    {
-        try { _ = factory(); return true; }
-        catch { return false; }
-    }
+    // IsValidRoleLevel removido - não é mais necessário
 }

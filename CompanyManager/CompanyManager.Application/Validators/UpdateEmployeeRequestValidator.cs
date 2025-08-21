@@ -10,10 +10,6 @@ namespace CompanyManager.Application.Validators
     {
         public UpdateEmployeeRequestValidator()
         {
-            RuleFor(x => x.Id)
-                .Must(id => id != Guid.Empty)
-                .WithMessage("Id is required.");
-
             RuleFor(x => x.FirstName)
                 .Cascade(CascadeMode.Stop)
                 .NotEmpty().WithMessage("First name is required.")
@@ -42,17 +38,18 @@ namespace CompanyManager.Application.Validators
                 .Must(phones => phones != null && phones.All(IsValidBrPhone))
                 .WithMessage("Invalid phone number.");
 
-            RuleFor(x => x.JobTitle)
-                .Cascade(CascadeMode.Stop)
-                .Must(HasNonWhitespaceContent).WithMessage("Job title is required.");
+            RuleFor(x => x.JobTitleId)
+                .Must(id => id != Guid.Empty)
+                .WithMessage("Job title is required.");
 
             RuleFor(x => x.DepartmentId)
-                .Must(id => id != Guid.Empty)
-                .WithMessage("DepartmentId is required.");
+                .Must(id => id != Guid.Empty).WithMessage("DepartmentId is required.");
 
-            RuleFor(x => x.ManagerId)
-                .Must(id => !id.HasValue || id.Value != Guid.Empty)
-                .WithMessage("ManagerId cannot be empty if provided.");
+            // RoleLevel removido - o nível é determinado pelo JobTitle.HierarchyLevel
+
+            RuleFor(x => x.Password)
+                .Must(password => string.IsNullOrEmpty(password) || password.Length >= 6)
+                .WithMessage("Password must have at least 6 characters if provided.");
         }
 
         private static bool HasNonWhitespaceContent(string? value) =>

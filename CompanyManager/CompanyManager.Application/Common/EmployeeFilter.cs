@@ -3,6 +3,6 @@
     public sealed record EmployeeFilter(
         string? NameOrEmail = null,
         Guid? DepartmentId = null,
-        string? JobTitle = null
+        Guid? JobTitleId = null
     );
 }

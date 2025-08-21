@@ -64,6 +64,8 @@ namespace CompanyManager.UnitTest.Application.Handlers
 
             result.AccessToken.Should().NotBeNullOrEmpty();
             result.ExpiresAt.Should().BeAfter(DateTime.UtcNow);
+            result.UserId.Should().Be(user.Id);
+            result.Email.Should().Be(user.UserName);
         }
 
         [Fact(DisplayName = "Should fail when refresh token is expired")]

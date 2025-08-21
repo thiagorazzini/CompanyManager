@@ -47,6 +47,8 @@ namespace CompanyManager.UnitTest.Application.Handlers
 
             result.AccessToken.Should().Be("stub.jwt.token");
             result.ExpiresAt.Should().BeAfter(DateTime.UtcNow);
+            result.UserId.Should().Be(user.Id);
+            result.Email.Should().Be(user.UserName);
             tokens.Calls.Should().Be(1);
             tokens.LastUserId.Should().Be(user.Id);
         }

@@ -17,12 +17,27 @@ namespace CompanyManager.UnitTest.Application.TestDouble
         public int EmailExistsCalls { get; private set; }
         public int CpfExistsCalls { get; private set; }
 
+        public ProbingEmployeeRepository SeedEmail(string normalizedEmail)
+        {
+            TakenEmails.Add(normalizedEmail);
+            return this;
+        }
+
+        public ProbingEmployeeRepository SeedCpf(string cpfDigitsOnly)
+        {
+            TakenCpfs.Add(cpfDigitsOnly);
+            return this;
+        }
+
         public ProbingEmployeeRepository(Employee? seed)
         {
             if (seed is not null) _store[seed.Id] = seed;
         }
 
         public Task<Employee?> GetByIdAsync(Guid id, CancellationToken ct) =>
+            Task.FromResult(_store.TryGetValue(id, out var e) ? e : null);
+
+        public Task<Employee?> GetByIdWithJobTitleAsync(Guid id, CancellationToken ct) =>
             Task.FromResult(_store.TryGetValue(id, out var e) ? e : null);
 
         public Task AddAsync(Employee employee, CancellationToken ct)
@@ -85,7 +100,7 @@ namespace CompanyManager.UnitTest.Application.TestDouble
 
         public Task<IEnumerable<Employee>> GetByJobTitleAsync(string jobTitle, CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(_store.Values.Where(e => e.JobTitle.Contains(jobTitle ?? "")));
+            return Task.FromResult(_store.Values.Where(e => e.JobTitle?.Name.Contains(jobTitle ?? "") == true));
         }
 
         public Task<IEnumerable<Employee>> GetActiveEmployeesAsync(CancellationToken cancellationToken = default)
@@ -131,8 +146,8 @@ namespace CompanyManager.UnitTest.Application.TestDouble
         public Task<IEnumerable<string>> GetDistinctJobTitlesAsync(CancellationToken cancellationToken = default)
         {
             var distinctJobTitles = _store.Values
-                .Where(e => !string.IsNullOrWhiteSpace(e.JobTitle))
-                .Select(e => e.JobTitle)
+                .Where(e => e.JobTitle != null)
+                .Select(e => e.JobTitle.Name)
                 .Distinct()
                 .OrderBy(title => title)
                 .ToList();

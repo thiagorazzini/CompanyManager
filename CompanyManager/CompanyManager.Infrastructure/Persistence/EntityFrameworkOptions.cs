@@ -25,11 +25,8 @@ namespace CompanyManager.Infrastructure.Persistence
                     maxRetryDelay: TimeSpan.FromSeconds(30),
                     errorNumbersToAdd: null);
                 
-                // Configurações de consulta
-                sqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-                
-                // Configurações de timeout
-                sqlOptions.CommandTimeout(60);
+                // Configurações de timeout - aumentado para evitar cancelamentos
+                sqlOptions.CommandTimeout(120);
                 
                 // Configurações de pool de conexões
                 sqlOptions.MaxBatchSize(100);

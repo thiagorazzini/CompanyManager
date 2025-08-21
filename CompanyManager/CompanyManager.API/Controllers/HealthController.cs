@@ -1,5 +1,6 @@
 ﻿using CompanyManager.API.Models;
 using CompanyManager.API.Models.Responses;
+using CompanyManager.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using System.Diagnostics;
@@ -165,6 +166,36 @@ namespace CompanyManager.API.Controllers
             return healthReport.Status == HealthStatus.Healthy 
                 ? Ok(response) 
                 : StatusCode(StatusCodes.Status503ServiceUnavailable, response);
+        }
+
+        [HttpGet("database/clear")]
+        public async Task<IActionResult> ClearDatabase()
+        {
+            try
+            {
+                var dbInitializer = HttpContext.RequestServices.GetRequiredService<IDatabaseInitializerService>();
+                await dbInitializer.ClearAsync();
+                return Ok(new { message = "Database cleared successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        [HttpGet("database/init")]
+        public async Task<IActionResult> InitializeDatabase()
+        {
+            try
+            {
+                var dbInitializer = HttpContext.RequestServices.GetRequiredService<IDatabaseInitializerService>();
+                await dbInitializer.InitializeAsync();
+                return Ok(new { message = "Database initialized successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
         }
     }
 }

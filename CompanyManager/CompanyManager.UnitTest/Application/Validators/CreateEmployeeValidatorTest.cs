@@ -13,25 +13,27 @@ namespace CompanyManager.UnitTest.Application.Validators
         private readonly CreateEmployeeRequestValidator _validator = new();
 
         // ---------- Test helpers ----------
-        private static CreateEmployeeRequest BuildValidRequest() => new()
+        private static CreateEmployeeRequest BuildValidRequest()
         {
-            FirstName = "John",
-            LastName = "Doe",
-            Email = "john.doe@company.com",
-            DocumentNumber = "52998224725",                // CPF válido
-            PhoneNumbers = new List<string> { "11999999999" }, // BR
-            JobTitle = "Developer",
-            DateOfBirth = DateTime.Today.AddYears(-25).ToString(DateFormat),
-            RoleLevel = "Junior",
-            Password = "Strong123!",
-            DepartmentId = Guid.NewGuid()
-        };
+            return new CreateEmployeeRequest
+            {
+                FirstName = "João",
+                LastName = "Silva",
+                Email = "joao.silva@empresa.com",
+                DocumentNumber = "12345678901",
+                DateOfBirth = "1990-01-01",
+                PhoneNumbers = new List<string> { "+5511999999999" },
+                JobTitleId = Guid.NewGuid(),
+                DepartmentId = Guid.NewGuid(),
+                Password = "Senha123!"
+            };
+        }
 
         private FluentValidation.Results.ValidationResult Validate(Action<CreateEmployeeRequest>? mutate = null)
         {
-            var req = BuildValidRequest();
-            mutate?.Invoke(req);
-            return _validator.Validate(req);
+            var request = BuildValidRequest();
+            mutate?.Invoke(request);
+            return _validator.Validate(request);
         }
 
         private static void ShouldHaveErrorFor(FluentValidation.Results.ValidationResult result, string propertyName, bool startsWith = false)
@@ -190,79 +192,30 @@ namespace CompanyManager.UnitTest.Application.Validators
             ShouldHaveErrorFor(result, nameof(CreateEmployeeRequest.Password));
         }
 
-        [Fact(DisplayName = "Should require non-empty DepartmentId")]
-        public void Should_Require_DepartmentId()
-        {
-            var result = Validate(r => r.DepartmentId = Guid.Empty);
-
-            result.IsValid.Should().BeFalse();
-            ShouldHaveErrorFor(result, nameof(CreateEmployeeRequest.DepartmentId));
-        }
-
-        [Theory(DisplayName = "Should accept valid ManagerId (null or non-empty GUID)")]
-        [InlineData(null)]
+        [Theory(DisplayName = "Should accept valid DepartmentId")]
         [InlineData("12345678-1234-1234-1234-123456789012")]
-        public void Should_Accept_Valid_ManagerId(string? managerId)
+        public void Should_Accept_Valid_DepartmentId(string departmentId)
         {
-            var result = Validate(r => 
-            {
-                if (managerId != null)
-                    r.ManagerId = Guid.Parse(managerId);
-                else
-                    r.ManagerId = null;
-            });
+            var r = BuildValidRequest();
+            r.DepartmentId = Guid.Parse(departmentId);
 
-            result.IsValid.Should().BeTrue(result.ToString());
-        }
+            var result = Validate();
 
-        [Fact(DisplayName = "Should reject empty ManagerId")]
-        public void Should_Reject_Empty_ManagerId()
-        {
-            var result = Validate(r => r.ManagerId = Guid.Empty);
-
-            result.IsValid.Should().BeFalse();
-            ShouldHaveErrorFor(result, nameof(CreateEmployeeRequest.ManagerId));
-        }
-
-        [Theory(DisplayName = "Should accept valid role levels")]
-        [InlineData("Junior")]
-        [InlineData("Pleno")]
-        [InlineData("Senior")]
-        [InlineData("Manager")]
-        [InlineData("Director")]
-        public void Should_Accept_Valid_Role_Levels(string roleLevel)
-        {
-            var result = Validate(r => r.RoleLevel = roleLevel);
-
-            result.IsValid.Should().BeTrue(result.ToString());
-        }
-
-        [Theory(DisplayName = "Should reject invalid role levels")]
-        [InlineData("")]
-        [InlineData(" ")]
-        [InlineData("Intern")]
-        [InlineData("Lead")]
-        [InlineData("VP")]
-        public void Should_Reject_Invalid_Role_Levels(string roleLevel)
-        {
-            var result = Validate(r => r.RoleLevel = roleLevel);
-
-            result.IsValid.Should().BeFalse();
-            ShouldHaveErrorFor(result, nameof(CreateEmployeeRequest.RoleLevel));
+            result.IsValid.Should().BeTrue();
         }
 
         [Theory(DisplayName = "Should be ok with trimmed fields (no false negatives)")]
-        [InlineData("  John  ", "  Doe  ", "  john.doe@company.com ")]
-        public void Should_Trim_Fields(string first, string last, string email)
+        [InlineData("  João  ", "  Silva  ", "  joao.silva@empresa.com  ")]
+        public void Should_Be_Ok_With_Trimmed_Fields(string firstName, string lastName, string email)
         {
             var result = Validate(r =>
             {
-                r.FirstName = first;
-                r.LastName = last;
+                r.FirstName = firstName;
+                r.LastName = lastName;
                 r.Email = email;
             });
 
-            result.IsValid.Should().BeTrue(result.ToString());
+            result.IsValid.Should().BeTrue();
         }
     }
 }

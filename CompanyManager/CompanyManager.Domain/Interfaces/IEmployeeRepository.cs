@@ -7,6 +7,7 @@ namespace CompanyManager.Domain.Interfaces
     {
         // Métodos de leitura
         Task<Employee?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<Employee?> GetByIdWithJobTitleAsync(Guid id, CancellationToken cancellationToken = default);
         Task<Employee?> GetByEmailAsync(string email, CancellationToken cancellationToken = default);
         Task<Employee?> GetByDocumentAsync(string documentNumber, CancellationToken cancellationToken = default);
         Task<IEnumerable<Employee>> GetAllAsync(CancellationToken cancellationToken = default);

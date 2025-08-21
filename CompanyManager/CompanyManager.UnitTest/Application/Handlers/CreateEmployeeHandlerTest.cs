@@ -1,217 +1,275 @@
-using CompanyManager.Domain.Interfaces;
+using CompanyManager.Application.Commands;
+using CompanyManager.Application.Handlers;
+using CompanyManager.Application.Validators;
 using CompanyManager.Domain.AccessControl;
 using CompanyManager.Domain.Entities;
-using CompanyManager.Application.Handlers;
-using CompanyManager.Application.Commands;
-using CompanyManager.Application.Validators;
+using CompanyManager.Domain.Interfaces;
+using CompanyManager.Domain.ValueObjects;
 using CompanyManager.UnitTest.Application.TestDouble;
-using CompanyManager.UnitTest.Builders;
-using FluentAssertions;
+using FluentValidation;
 using Microsoft.Extensions.Logging;
 using Moq;
+using System.Globalization;
 
-namespace CompanyManager.Application.Handlers;
-public sealed class CreateEmployeeHandlerTest
+namespace CompanyManager.UnitTest.Application.Handlers
 {
-    private readonly CreateEmployeeRequestValidator _validator = new();
-
-    private (CreateEmployeeHandler sut,
-             InMemoryEmployeeRepository employees,
-             InMemoryUserAccountRepository users,
-             InMemoryDepartmentRepository departments,
-             IPasswordHasher hasher,
-             Guid currentUserId)
-        BuildSut(Guid existingDepartmentId)
+    public class CreateEmployeeHandlerTest
     {
-        var employees = new InMemoryEmployeeRepository();
-        var users = new InMemoryUserAccountRepository();
-        var departments = new InMemoryDepartmentRepository(new[] { existingDepartmentId });
-        var hasher = new FakeHasher();
+        private readonly Mock<IEmployeeRepository> _mockEmployeeRepository;
+        private readonly Mock<IUserAccountRepository> _mockUserRepository;
+        private readonly Mock<IDepartmentRepository> _mockDepartmentRepository;
+        private readonly Mock<IJobTitleRepository> _mockJobTitleRepository;
+        private readonly Mock<IPasswordHasher> _mockPasswordHasher;
+        private readonly Mock<ILogger<CreateEmployeeHandler>> _mockLogger;
+        private readonly CreateEmployeeRequestValidator _validator;
+        private readonly CreateEmployeeHandler _handler;
 
-        // Create current user with Director role to allow creating any employee
-        var currentUser = UserAccount.Create("current@company.com", "hash", Guid.NewGuid());
-        var directorRole = new Role("Director", HierarchicalRole.Director);
-        currentUser.AddRole(directorRole);
-        users.AddAsync(currentUser, CancellationToken.None).Wait();
+        public CreateEmployeeHandlerTest()
+        {
+            _mockEmployeeRepository = new Mock<IEmployeeRepository>();
+            _mockUserRepository = new Mock<IUserAccountRepository>();
+            _mockDepartmentRepository = new Mock<IDepartmentRepository>();
+            _mockJobTitleRepository = new Mock<IJobTitleRepository>();
+            _mockPasswordHasher = new Mock<IPasswordHasher>();
+            _mockLogger = new Mock<ILogger<CreateEmployeeHandler>>();
+            _validator = new CreateEmployeeRequestValidator();
 
-        var currentUserId = currentUser.Id;
+            _handler = new CreateEmployeeHandler(
+                _validator,
+                _mockEmployeeRepository.Object,
+                _mockUserRepository.Object,
+                _mockDepartmentRepository.Object,
+                _mockJobTitleRepository.Object,
+                _mockPasswordHasher.Object,
+                _mockLogger.Object);
+        }
 
-        var loggerMock = new Mock<ILogger<CreateEmployeeHandler>>();
-        var sut = new CreateEmployeeHandler(_validator, employees, users, departments, hasher, loggerMock.Object);
-        
-        return (sut, employees, users, departments, hasher, currentUserId);
-    }
+        [Fact]
+        public async Task Handle_ValidCommand_ShouldCreateEmployeeAndUserAccount()
+        {
+            // Arrange
+            var command = CreateEmployeeCommandBuilder.Build();
+            var currentUserId = Guid.NewGuid();
+            var currentUserRoleId = Guid.NewGuid();
+            var currentUserRole = new Role("Manager", HierarchicalRole.Manager);
+            
+            var currentUser = UserAccount.Create("manager@test.com", "hash", Guid.NewGuid(), currentUserRoleId);
+            var department = Department.Create("IT", "Information Technology");
+            var jobTitle = JobTitle.Create("Developer", 4, "Software Developer"); // Nível 4 = Pleno
+            var employee = Employee.Create("John", "Doe", new Email("john@test.com"), new DocumentNumber("12345678901"), 
+                new DateOfBirth(DateTime.Parse("1990-01-01")), new[] { "+5511999999999" }, jobTitle.Id, department.Id);
 
-    [Fact(DisplayName = "Should create Employee and UserAccount successfully")]
-    public async Task Should_Create_Employee_And_UserAccount()
-    {
-        var departmentId = Guid.NewGuid();
-        var (sut, employees, users, _, hasher, currentUserId) = BuildSut(departmentId);
+            _mockUserRepository.Setup(x => x.GetByIdAsync(currentUserId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(currentUser);
+            _mockDepartmentRepository.Setup(x => x.GetByIdAsync(command.DepartmentId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(department);
+            _mockJobTitleRepository.Setup(x => x.GetByIdAsync(command.JobTitleId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(jobTitle);
+            _mockPasswordHasher.Setup(x => x.Hash(It.IsAny<string>())).Returns("hashedPassword");
+            _mockUserRepository.Setup(x => x.GetByEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((UserAccount?)null);
 
-        var command = CreateEmployeeCommandBuilder.New()
-            .WithDepartment(departmentId)
-            .Build();
+            // Act
+            var result = await _handler.Handle(command, CancellationToken.None, currentUserId);
 
-        var result = await sut.Handle(command, CancellationToken.None, currentUserId);
+            // Assert
+            Assert.NotNull(result);
+            Assert.NotEqual(Guid.Empty, result.Id);
+            _mockEmployeeRepository.Verify(x => x.AddAsync(It.IsAny<Employee>(), It.IsAny<CancellationToken>()), Times.Once);
+            _mockUserRepository.Verify(x => x.AddAsync(It.IsAny<UserAccount>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
 
-        result.Id.Should().NotBeEmpty();
+        [Fact]
+        public async Task Handle_CurrentUserNotFound_ShouldThrowUnauthorizedAccessException()
+        {
+            // Arrange
+            var command = CreateEmployeeCommandBuilder.Build();
+            var currentUserId = Guid.NewGuid();
 
-        var employee = await employees.GetByIdAsync(result.Id, default);
-        employee.Should().NotBeNull();
-        employee!.FirstName.Should().Be("John");
-        employee.LastName.Should().Be("Doe");
-        employee.Email.Value.Should().Be("john.doe@company.com");
-        employee.ManagerId.Should().BeNull();
-        employee.HasManager.Should().BeFalse();
-        employee.HierarchyLevel.Should().Be(0);
+            _mockUserRepository.Setup(x => x.GetByIdAsync(currentUserId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync((UserAccount?)null);
 
-        // Verify UserAccount is created with same ID as Employee
-        var userAccounts = await users.GetAllAsync(default);
-        var userAccount = userAccounts.FirstOrDefault(u => u.EmployeeId == result.Id);
-        userAccount.Should().NotBeNull();
-        userAccount!.UserName.Should().Be("john.doe@company.com");
-    }
+            // Act & Assert
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => 
+                _handler.Handle(command, CancellationToken.None, currentUserId));
+        }
 
-    [Fact(DisplayName = "Should create Employee with manager successfully")]
-    public async Task Should_Create_Employee_With_Manager_Successfully()
-    {
-        var departmentId = Guid.NewGuid();
-        var managerId = Guid.NewGuid();
-        var (sut, employees, users, _, hasher, currentUserId) = BuildSut(departmentId);
+        [Fact]
+        public async Task Handle_CurrentUserRoleNotFound_ShouldThrowUnauthorizedAccessException()
+        {
+            // Arrange
+            var command = CreateEmployeeCommandBuilder.Build();
+            var currentUserId = Guid.NewGuid();
+            var currentUser = UserAccount.Create("user@test.com", "hash", Guid.NewGuid(), Guid.NewGuid());
 
-        var command = CreateEmployeeCommandBuilder.New()
-            .WithDepartment(departmentId)
-            .WithManager(managerId)
-            .Build();
+            _mockUserRepository.Setup(x => x.GetByIdAsync(currentUserId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(currentUser);
 
-        var result = await sut.Handle(command, CancellationToken.None, currentUserId);
+            // Act & Assert
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => 
+                _handler.Handle(command, CancellationToken.None, currentUserId));
+        }
 
-        result.Id.Should().NotBeEmpty();
+        [Fact]
+        public async Task Handle_UserCannotCreateHigherRole_ShouldThrowUnauthorizedAccessException()
+        {
+            // Arrange
+            var command = CreateEmployeeCommandBuilder.Build();
+            var currentUserId = Guid.NewGuid();
+            var currentUserRoleId = Guid.NewGuid();
+            var currentUserRole = new Role("Junior", HierarchicalRole.Junior);
+            
+            var currentUser = UserAccount.Create("junior@test.com", "hash", Guid.NewGuid(), currentUserRoleId);
+            var department = Department.Create("IT", "Information Technology");
+            var jobTitle = JobTitle.Create("Director", 1, "Company Director"); // Nível 1 = Director (mais alto que Junior)
 
-        var employee = await employees.GetByIdAsync(result.Id, default);
-        employee.Should().NotBeNull();
-        employee!.ManagerId.Should().Be(managerId);
-        employee.HasManager.Should().BeTrue();
-        employee.HierarchyLevel.Should().Be(1);
-    }
+            _mockUserRepository.Setup(x => x.GetByIdAsync(currentUserId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(currentUser);
+            _mockDepartmentRepository.Setup(x => x.GetByIdAsync(command.DepartmentId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(department);
+            _mockJobTitleRepository.Setup(x => x.GetByIdAsync(command.JobTitleId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(jobTitle);
 
-    [Fact(DisplayName = "Should reject when department does not exist")]
-    public async Task Should_Reject_Unknown_Department()
-    {
-        var unknownDept = Guid.NewGuid();
-        var (sut, _, _, _, _, currentUserId) = BuildSut(existingDepartmentId: Guid.NewGuid());
+            // Act & Assert
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => 
+                _handler.Handle(command, CancellationToken.None, currentUserId));
+        }
 
-        var command = CreateEmployeeCommandBuilder.New()
-            .WithDepartment(unknownDept)
-            .Build();
+        [Fact]
+        public async Task Handle_UserCanCreateLowerRole_ShouldSucceed()
+        {
+            // Arrange
+            var command = CreateEmployeeCommandBuilder.Build();
+            var currentUserId = Guid.NewGuid();
+            var currentUserRoleId = Guid.NewGuid();
+            var currentUserRole = new Role("Manager", HierarchicalRole.Manager);
+            
+            var currentUser = UserAccount.Create("manager@test.com", "hash", Guid.NewGuid(), currentUserRoleId);
+            var department = Department.Create("IT", "Information Technology");
+            var jobTitle = JobTitle.Create("Developer", 5, "Software Developer"); // Nível 5 = Junior (mais baixo que Manager)
+            var employee = Employee.Create("John", "Doe", new Email("john@test.com"), new DocumentNumber("12345678901"), 
+                new DateOfBirth(DateTime.Parse("1990-01-01")), new[] { "+5511999999999" }, jobTitle.Id, department.Id);
 
-        Func<Task> act = () => sut.Handle(command, default, currentUserId);
+            _mockUserRepository.Setup(x => x.GetByIdAsync(currentUserId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(currentUser);
+            _mockDepartmentRepository.Setup(x => x.GetByIdAsync(command.DepartmentId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(department);
+            _mockJobTitleRepository.Setup(x => x.GetByIdAsync(command.JobTitleId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(jobTitle);
+            _mockPasswordHasher.Setup(x => x.Hash(It.IsAny<string>())).Returns("hashedPassword");
+            _mockUserRepository.Setup(x => x.GetByEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((UserAccount?)null);
 
-        await act.Should().ThrowAsync<ArgumentException>()
-                 .WithMessage("*department*");
-    }
+            // Act
+            var result = await _handler.Handle(command, CancellationToken.None, currentUserId);
 
-    [Fact(DisplayName = "Should reject duplicate email")]
-    public async Task Should_Reject_Duplicate_Email()
-    {
-        var deptId = Guid.NewGuid();
-        var (sut, employees, _, _, _, currentUserId) = BuildSut(deptId);
+            // Assert
+            Assert.NotNull(result);
+            Assert.NotEqual(Guid.Empty, result.Id);
+        }
 
-        employees.SeedEmail("john.doe@company.com");
+        [Fact]
+        public async Task Handle_SuperUserCanCreateAnyRole_ShouldSucceed()
+        {
+            // Arrange
+            var command = CreateEmployeeCommandBuilder.Build();
+            var currentUserId = Guid.NewGuid();
+            var currentUserRoleId = Guid.NewGuid();
+            var currentUserRole = new Role("SuperUser", HierarchicalRole.SuperUser);
+            
+            var currentUser = UserAccount.Create("superuser@test.com", "hash", Guid.NewGuid(), currentUserRoleId);
+            var department = Department.Create("IT", "Information Technology");
+            var jobTitle = JobTitle.Create("Director", 1, "Company Director"); // Nível 1 = Director
+            var employee = Employee.Create("John", "Doe", new Email("john@test.com"), new DocumentNumber("12345678901"), 
+                new DateOfBirth(DateTime.Parse("1990-01-01")), new[] { "+5511999999999" }, jobTitle.Id, department.Id);
 
-        var command = CreateEmployeeCommandBuilder.New()
-            .WithDepartment(deptId)
-            .Build();
+            _mockUserRepository.Setup(x => x.GetByIdAsync(currentUserId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(currentUser);
+            _mockDepartmentRepository.Setup(x => x.GetByIdAsync(command.DepartmentId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(department);
+            _mockJobTitleRepository.Setup(x => x.GetByIdAsync(command.JobTitleId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(jobTitle);
+            _mockPasswordHasher.Setup(x => x.Hash(It.IsAny<string>())).Returns("hashedPassword");
+            _mockUserRepository.Setup(x => x.GetByEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((UserAccount?)null);
 
-        Func<Task> act = () => sut.Handle(command, default, currentUserId);
+            // Act
+            var result = await _handler.Handle(command, CancellationToken.None, currentUserId);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-                 .WithMessage("*Email already in use*");
-    }
+            // Assert
+            Assert.NotNull(result);
+            Assert.NotEqual(Guid.Empty, result.Id);
+        }
 
-    [Fact(DisplayName = "Should reject duplicate CPF")]
-    public async Task Should_Reject_Duplicate_Cpf()
-    {
-        var deptId = Guid.NewGuid();
-        var (sut, employees, _, _, _, currentUserId) = BuildSut(deptId);
+        [Fact]
+        public async Task Handle_EmailAlreadyInUse_ShouldThrowArgumentException()
+        {
+            // Arrange
+            var command = CreateEmployeeCommandBuilder.Build();
+            var currentUserId = Guid.NewGuid();
+            var currentUserRoleId = Guid.NewGuid();
+            var currentUserRole = new Role("Manager", HierarchicalRole.Manager);
+            
+            var currentUser = UserAccount.Create("manager@test.com", "hash", Guid.NewGuid(), currentUserRoleId);
+            var existingUser = UserAccount.Create("john@test.com", "hash", Guid.NewGuid(), Guid.NewGuid());
 
-        employees.SeedCpf("52998224725");
+            _mockUserRepository.Setup(x => x.GetByIdAsync(currentUserId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(currentUser);
+            _mockUserRepository.Setup(x => x.GetByEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(existingUser);
 
-        var command = CreateEmployeeCommandBuilder.New()
-            .WithDepartment(deptId)
-            .Build();
+            // Act & Assert
+            await Assert.ThrowsAsync<ArgumentException>(() => 
+                _handler.Handle(command, CancellationToken.None, currentUserId));
+        }
 
-        Func<Task> act = () => sut.Handle(command, default, currentUserId);
+        [Fact]
+        public async Task Handle_DepartmentNotFound_ShouldThrowArgumentException()
+        {
+            // Arrange
+            var command = CreateEmployeeCommandBuilder.Build();
+            var currentUserId = Guid.NewGuid();
+            var currentUserRoleId = Guid.NewGuid();
+            var currentUserRole = new Role("Manager", HierarchicalRole.Manager);
+            
+            var currentUser = UserAccount.Create("manager@test.com", "hash", Guid.NewGuid(), currentUserRoleId);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-                 .WithMessage("*Document number already in use*");
-    }
+            _mockUserRepository.Setup(x => x.GetByIdAsync(currentUserId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(currentUser);
+            _mockUserRepository.Setup(x => x.GetByEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((UserAccount?)null);
+            _mockDepartmentRepository.Setup(x => x.GetByIdAsync(command.DepartmentId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Department?)null);
 
-    [Fact(DisplayName = "Should throw ValidationException when request is invalid")]
-    public async Task Should_Throw_ValidationException_On_Invalid_Request()
-    {
-        var deptId = Guid.NewGuid();
-        var (sut, _, _, _, _, currentUserId) = BuildSut(deptId);
+            // Act & Assert
+            await Assert.ThrowsAsync<ArgumentException>(() => 
+                _handler.Handle(command, CancellationToken.None, currentUserId));
+        }
 
-        var command = CreateEmployeeCommandBuilder.New()
-            .WithDepartment(deptId)
-            .WithEmail("invalid-email")
-            .Build();
+        [Fact]
+        public async Task Handle_JobTitleNotFound_ShouldThrowArgumentException()
+        {
+            // Arrange
+            var command = CreateEmployeeCommandBuilder.Build();
+            var currentUserId = Guid.NewGuid();
+            var currentUserRoleId = Guid.NewGuid();
+            var currentUserRole = new Role("Manager", HierarchicalRole.Manager);
+            
+            var currentUser = UserAccount.Create("manager@test.com", "hash", Guid.NewGuid(), currentUserRoleId);
+            var department = Department.Create("IT", "Information Technology");
 
-        Func<Task> act = () => sut.Handle(command, default, currentUserId);
+            _mockUserRepository.Setup(x => x.GetByIdAsync(currentUserId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(currentUser);
+            _mockUserRepository.Setup(x => x.GetByEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((UserAccount?)null);
+            _mockDepartmentRepository.Setup(x => x.GetByIdAsync(command.DepartmentId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(department);
+            _mockJobTitleRepository.Setup(x => x.GetByIdAsync(command.JobTitleId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync((JobTitle?)null);
 
-        await act.Should().ThrowAsync<FluentValidation.ValidationException>();
-    }
-
-    [Fact(DisplayName = "Should reject when user tries to create employee with higher role level")]
-    public async Task Should_Reject_Creating_Employee_With_Higher_Role_Level()
-    {
-        var departmentId = Guid.NewGuid();
-        var (sut, employees, users, _, hasher, currentUserId) = BuildSut(departmentId);
-
-        // Create junior user
-        var juniorUser = UserAccount.Create("junior@company.com", "hash", Guid.NewGuid());
-        var juniorRole = new Role("Junior", HierarchicalRole.Junior);
-        juniorUser.AddRole(juniorRole);
-        await users.AddAsync(juniorUser, CancellationToken.None);
-        
-        var juniorUserId = juniorUser.Id;
-
-        var command = CreateEmployeeCommandBuilder.New()
-            .WithDepartment(departmentId)
-            .WithRoleLevel("Manager")
-            .Build();
-
-        Func<Task> act = () => sut.Handle(command, CancellationToken.None, juniorUserId);
-
-        await act.Should().ThrowAsync<UnauthorizedAccessException>()
-                 .WithMessage("*cannot create employees with role level 'Manager'*");
-    }
-
-    [Fact(DisplayName = "Should allow when user creates employee with equal or lower role level")]
-    public async Task Should_Allow_Creating_Employee_With_Equal_Or_Lower_Role_Level()
-    {
-        var departmentId = Guid.NewGuid();
-        var (sut, employees, users, _, hasher, currentUserId) = BuildSut(departmentId);
-
-        // Create manager user
-        var managerUser = UserAccount.Create("manager@company.com", "hash", Guid.NewGuid());
-        var managerRole = new Role("Manager", HierarchicalRole.Manager);
-        managerUser.AddRole(managerRole);
-        await users.AddAsync(managerUser, CancellationToken.None);
-        
-        var managerUserId = managerUser.Id;
-
-        var command = CreateEmployeeCommandBuilder.New()
-            .WithDepartment(departmentId)
-            .WithRoleLevel("Senior")
-            .Build();
-
-        var result = await sut.Handle(command, CancellationToken.None, currentUserId);
-
-        result.Id.Should().NotBeEmpty();
-        
-        var employee = await employees.GetByIdAsync(result.Id, default);
-        employee.Should().NotBeNull();
+            // Act & Assert
+            await Assert.ThrowsAsync<ArgumentException>(() => 
+                _handler.Handle(command, CancellationToken.None, currentUserId));
+        }
     }
 }

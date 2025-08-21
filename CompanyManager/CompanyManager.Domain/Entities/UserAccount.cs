@@ -10,8 +10,10 @@ namespace CompanyManager.Domain.Entities
         public string PasswordHash { get; private set; } = string.Empty;
         public Guid SecurityStamp { get; private set; } = Guid.NewGuid();
         public DateTime PasswordChangedAt { get; private set; } = DateTime.UtcNow;
-        private readonly List<Role> _roles = new();
-        public IReadOnlyCollection<Role> Roles => _roles.AsReadOnly();
+        
+        // Role - agora apenas um ID em vez de coleção
+        public Guid RoleId { get; private set; }
+        
         // State
         public bool IsActive { get; private set; } = true;
 
@@ -26,87 +28,106 @@ namespace CompanyManager.Domain.Entities
 
         // Link to Employee
         public Guid EmployeeId { get; private set; }
+        
+        // Link to JobTitle
+        public Guid JobTitleId { get; private set; }
 
         // EF constructor
         private UserAccount() { }
 
-        private UserAccount(string userName, string passwordHash, Guid employeeId)
+        private UserAccount(string userName, string passwordHash, Guid employeeId, Guid roleId, Guid jobTitleId)
         {
             SetUserName(userName);
             SetPasswordHash(passwordHash);
             if (employeeId == Guid.Empty)
                 throw new ArgumentException("Invalid employee id", nameof(employeeId));
+            if (roleId == Guid.Empty)
+                throw new ArgumentException("Invalid role id", nameof(roleId));
+            if (jobTitleId == Guid.Empty)
+                throw new ArgumentException("Invalid job title id", nameof(jobTitleId));
             EmployeeId = employeeId;
+            RoleId = roleId;
+            JobTitleId = jobTitleId;
         }
 
-        public static UserAccount Create(string userName, string passwordHash, Guid employeeId)
-            => new(userName, passwordHash, employeeId);
+        public static UserAccount Create(string userName, string passwordHash, Guid employeeId, Guid roleId, Guid jobTitleId)
+            => new(userName, passwordHash, employeeId, roleId, jobTitleId);
 
         public void SetUserName(string userName)
         {
             if (string.IsNullOrWhiteSpace(userName))
-                throw new ArgumentException("Username cannot be null or empty", nameof(userName));
+                throw new ArgumentException("Invalid username", nameof(userName));
 
             UserName = userName.Trim().ToLowerInvariant();
             UpdateModifiedAt();
         }
 
-        /// <summary>
-        /// Receives the already-hashed password (hashing is external).
-        /// Updates PasswordChangedAt, resets failures/lockout and renews the SecurityStamp.
-        /// </summary>
-        public void SetPasswordHash(string newHash)
+        public void SetPasswordHash(string passwordHash)
         {
-            if (string.IsNullOrWhiteSpace(newHash))
-                throw new ArgumentException("Password hash cannot be null or empty", nameof(newHash));
+            if (string.IsNullOrWhiteSpace(passwordHash))
+                throw new ArgumentException("Hash required.", nameof(passwordHash));
 
-            PasswordHash = newHash;
+            PasswordHash = passwordHash;
             PasswordChangedAt = DateTime.UtcNow;
-            SecurityStamp = Guid.NewGuid();
-            AccessFailedCount = 0;
-            LockoutEndUtc = null;
             UpdateModifiedAt();
         }
 
-        public void RecordFailedLoginAttempt(int maxAttempts, TimeSpan lockoutFor)
+        public void SetRole(Guid roleId)
         {
-            if (!IsActive) return;
-            AccessFailedCount++;
-            if (AccessFailedCount >= maxAttempts)
-                LockoutEndUtc = DateTime.UtcNow.Add(lockoutFor);
+            if (roleId == Guid.Empty)
+                throw new ArgumentException("Invalid role id", nameof(roleId));
+
+            RoleId = roleId;
             UpdateModifiedAt();
         }
 
-        public void ResetFailuresAfterSuccessfulLogin()
+        public void SetJobTitle(Guid jobTitleId)
         {
-            AccessFailedCount = 0;
-            LockoutEndUtc = null;
-            UpdateModifiedAt();
-        }
+            if (jobTitleId == Guid.Empty)
+                throw new ArgumentException("Invalid job title id", nameof(jobTitleId));
 
-        public void UnlockNow()
-        {
-            LockoutEndUtc = null;
-            AccessFailedCount = 0;
+            JobTitleId = jobTitleId;
             UpdateModifiedAt();
         }
 
         public void Activate()
         {
-            if (!IsActive)
-            {
-                IsActive = true;
-                UpdateModifiedAt();
-            }
+            IsActive = true;
+            UpdateModifiedAt();
         }
 
         public void Deactivate()
         {
-            if (IsActive)
-            {
-                IsActive = false;
-                UpdateModifiedAt();
-            }
+            IsActive = false;
+            UpdateModifiedAt();
+        }
+
+        public void IncrementAccessFailedCount()
+        {
+            AccessFailedCount++;
+            UpdateModifiedAt();
+        }
+
+        public void ResetAccessFailedCount()
+        {
+            AccessFailedCount = 0;
+            UpdateModifiedAt();
+        }
+
+        public void Lockout(DateTime lockoutEnd)
+        {
+            if (lockoutEnd <= DateTime.UtcNow)
+                throw new ArgumentException("Lockout end must be in the future", nameof(lockoutEnd));
+
+            LockoutEndUtc = lockoutEnd;
+            UpdateModifiedAt();
+        }
+
+        public void Unlock()
+        {
+            LockoutEndUtc = null;
+            AccessFailedCount = 0;
+            UpdateModifiedAt();
         }
 
         public void EnableTwoFactor(string encryptedSecret)
@@ -126,14 +147,6 @@ namespace CompanyManager.Domain.Entities
             UpdateModifiedAt();
         }
 
-        public void AddRole(Role role)
-        {
-            if (role is null) throw new ArgumentNullException(nameof(role));
-            if (_roles.Any(r => r.Id == role.Id)) return; // idempotente
-            _roles.Add(role);
-            UpdateModifiedAt();
-        }
-
         public void ChangePassword(string newPasswordHash)
         {
             if (string.IsNullOrWhiteSpace(newPasswordHash))
@@ -144,41 +157,126 @@ namespace CompanyManager.Domain.Entities
             UpdateModifiedAt(); 
         }
 
-        public void RemoveRole(Role role)
-        {
-            if (_roles.RemoveAll(r => r.Id == role.Id) > 0)
-                UpdateModifiedAt();
-        }
-
-        public IEnumerable<string> GetAllPermissions() =>
-            _roles.SelectMany(r => r.Permissions).Distinct(StringComparer.OrdinalIgnoreCase);
-
-        public bool HasPermission(string permission) =>
-            _roles.Any(r => r.Permissions.Contains(permission, StringComparer.OrdinalIgnoreCase));
-
+        // Métodos de validação de permissões agora precisam receber a Role como parâmetro
+        // já que não temos mais acesso direto à coleção de roles
+        
         /// <summary>
         /// Verifica se o usuário pode criar funcionários com o role especificado
         /// </summary>
+        /// <param name="userRole">Role do usuário atual</param>
         /// <param name="targetRole">Role que está sendo criado</param>
         /// <returns>True se o usuário pode criar funcionários com o role especificado</returns>
-        public bool CanCreateRole(HierarchicalRole targetRole)
+        public bool CanCreateRole(Role userRole, HierarchicalRole targetRole)
         {
-            // Usuário deve ter pelo menos um role
-            if (!_roles.Any()) return false;
-            
-            // Verificar se algum dos roles do usuário pode criar o role especificado
-            return _roles.Any(r => r.CanCreateRole(targetRole));
+            if (userRole is null) return false;
+            return userRole.CanCreateRole(targetRole);
         }
 
         /// <summary>
-        /// Obtém o nível hierárquico mais alto do usuário
+        /// Verifica se o usuário é SuperUser
         /// </summary>
-        /// <returns>Nível hierárquico mais alto</returns>
-        public HierarchicalRole GetHighestRoleLevel()
+        /// <param name="userRole">Role do usuário atual</param>
+        /// <returns>True se o usuário for SuperUser</returns>
+        public bool IsSuperUser(Role userRole)
         {
-            if (!_roles.Any()) return HierarchicalRole.Junior;
+            return userRole?.IsSuperUser() ?? false;
+        }
+
+        /// <summary>
+        /// Obtém o nível hierárquico do usuário
+        /// </summary>
+        /// <param name="userRole">Role do usuário atual</param>
+        /// <returns>Nível hierárquico</returns>
+        public HierarchicalRole GetRoleLevel(Role userRole)
+        {
+            return userRole?.Level ?? HierarchicalRole.Junior;
+        }
+
+        /// <summary>
+        /// Verifica se o usuário tem uma permissão específica
+        /// SuperUser tem todas as permissões
+        /// </summary>
+        /// <param name="userRole">Role do usuário atual</param>
+        /// <param name="permission">Permissão a verificar</param>
+        /// <returns>True se tiver a permissão</returns>
+        public bool HasPermission(Role userRole, string permission)
+        {
+            if (userRole?.IsSuperUser() == true)
+                return true; // SuperUser tem todas as permissões
+                
+            return userRole?.HasPermission(permission) ?? false;
+        }
+
+        /// <summary>
+        /// Verifica se o usuário pode modificar outro usuário
+        /// SuperUser pode modificar qualquer usuário
+        /// Usuários só podem modificar usuários com nível hierárquico inferior
+        /// </summary>
+        /// <param name="userRole">Role do usuário atual</param>
+        /// <param name="targetUser">Usuário que está sendo modificado</param>
+        /// <param name="targetUserRole">Role do usuário alvo</param>
+        /// <returns>True se o usuário pode modificar o usuário alvo</returns>
+        public bool CanModifyUser(Role userRole, UserAccount targetUser, Role targetUserRole)
+        {
+            if (targetUser is null || userRole is null || targetUserRole is null) return false;
             
-            return _roles.Max(r => r.Level);
+            // SuperUser pode modificar qualquer usuário
+            if (userRole.IsSuperUser()) return true;
+            
+            // Usuário só pode modificar usuários com nível hierárquico inferior
+            return userRole.Level > targetUserRole.Level;
+        }
+
+        /// <summary>
+        /// Verifica se o usuário pode modificar um departamento
+        /// </summary>
+        /// <param name="userRole">Role do usuário atual</param>
+        /// <param name="department">Departamento que está sendo modificado</param>
+        /// <returns>True se o usuário pode modificar o departamento</returns>
+        public bool CanModifyDepartment(Role userRole, Department department)
+        {
+            if (userRole is null || department is null) return false;
+            
+            // SuperUser pode modificar qualquer departamento
+            if (userRole.IsSuperUser()) return true;
+            
+            // Apenas Manager e Director podem modificar departamentos
+            return userRole.Level >= HierarchicalRole.Manager;
+        }
+
+        /// <summary>
+        /// Verifica se o usuário pode modificar um cargo
+        /// </summary>
+        /// <param name="userRole">Role do usuário atual</param>
+        /// <param name="jobTitle">Cargo que está sendo modificado</param>
+        /// <returns>True se o usuário pode modificar o cargo</returns>
+        public bool CanModifyJobTitle(Role userRole, JobTitle jobTitle)
+        {
+            if (userRole is null || jobTitle is null) return false;
+            
+            // SuperUser pode modificar qualquer cargo
+            if (userRole.IsSuperUser()) return true;
+            
+            // Apenas Manager e Director podem modificar cargos
+            return userRole.Level >= HierarchicalRole.Manager;
+        }
+
+        /// <summary>
+        /// Verifica se o usuário pode modificar um funcionário
+        /// </summary>
+        /// <param name="userRole">Role do usuário atual</param>
+        /// <param name="employee">Funcionário que está sendo modificado</param>
+        /// <param name="employeeJobTitle">Cargo do funcionário</param>
+        /// <returns>True se o usuário pode modificar o funcionário</returns>
+        public bool CanModifyEmployee(Role userRole, Employee employee, JobTitle employeeJobTitle)
+        {
+            if (userRole is null || employee is null || employeeJobTitle is null) return false;
+            
+            // SuperUser pode modificar qualquer funcionário
+            if (userRole.IsSuperUser()) return true;
+            
+            // Apenas Manager e Director podem modificar funcionários
+            return userRole.Level >= HierarchicalRole.Manager;
         }
     }
 }

@@ -63,7 +63,7 @@ namespace CompanyManager.Application.Handlers
             // 4) Gerar token
             var accessToken = _tokens.GenerateAccessToken(user);
             var expiresAt = _tokens.GetExpirationUtc();
-            return new AuthResult(accessToken, expiresAt);
+            return new AuthResult(accessToken, expiresAt, user.Id, user.UserName);
         }
     }
 }

@@ -6,6 +6,7 @@ using CompanyManager.API.Models;
 using CompanyManager.API.Models.Responses;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace CompanyManager.API.Controllers
 {
@@ -44,6 +45,7 @@ namespace CompanyManager.API.Controllers
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Authentication result with JWT token</returns>
         [HttpPost("login")]
+        [AllowAnonymous]
         [ProducesResponseType(typeof(AuthenticationResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ValidationErrorResponse), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -74,6 +76,7 @@ namespace CompanyManager.API.Controllers
                     TokenType = "Bearer",
                     User = new UserInfo
                     {
+                        Id = result.UserId,
                         Email = request.Email
                     }
                 };
@@ -138,7 +141,12 @@ namespace CompanyManager.API.Controllers
                     AccessToken = result.AccessToken,
                     RefreshToken = null,
                     ExpiresAt = result.ExpiresAt,
-                    TokenType = "Bearer"
+                    TokenType = "Bearer",
+                    User = new UserInfo
+                    {
+                        Id = result.UserId,
+                        Email = result.Email
+                    }
                 };
 
                 return Ok(response);

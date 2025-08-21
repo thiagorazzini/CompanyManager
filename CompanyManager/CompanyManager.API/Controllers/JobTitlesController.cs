@@ -1,159 +1,85 @@
-using CompanyManager.API.Models;
-using CompanyManager.API.Models.Responses;
-using CompanyManager.Domain.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using CompanyManager.Application.DTOs;
+using CompanyManager.Application.Abstractions;
+using CompanyManager.Application.Common;
 
 namespace CompanyManager.API.Controllers
 {
-    /// <summary>
-    /// Controller for managing job titles
-    /// </summary>
     [ApiController]
-    [Route("api/v1/job-titles")]
-    [Produces("application/json")]
+    [Route("api/v1/[controller]")]
+    [Authorize]
     public class JobTitlesController : ControllerBase
     {
-        private readonly IEmployeeRepository _employeeRepository;
-        private readonly ILogger<JobTitlesController> _logger;
+        private readonly IListJobTitlesQueryHandler _listJobTitlesQueryHandler;
+        private readonly IGetJobTitleByIdQueryHandler _getJobTitleByIdQueryHandler;
 
         public JobTitlesController(
-            IEmployeeRepository employeeRepository,
-            ILogger<JobTitlesController> logger)
+            IListJobTitlesQueryHandler listJobTitlesQueryHandler,
+            IGetJobTitleByIdQueryHandler getJobTitleByIdQueryHandler)
         {
-            _employeeRepository = employeeRepository ?? throw new ArgumentNullException(nameof(employeeRepository));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _listJobTitlesQueryHandler = listJobTitlesQueryHandler;
+            _getJobTitleByIdQueryHandler = getJobTitleByIdQueryHandler;
         }
 
         /// <summary>
-        /// Gets all available job titles in the system
+        /// Lista todos os cargos disponíveis
         /// </summary>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>List of available job titles</returns>
         [HttpGet]
-        [ProducesResponseType(typeof(JobTitlesResponse), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetJobTitles(CancellationToken cancellationToken)
+        public async Task<ActionResult<PageResult<JobTitleResponse>>> List([FromQuery] ListJobTitlesRequest request)
         {
             try
             {
-                _logger.LogInformation("Retrieving all available job titles");
-
-                var jobTitles = await _employeeRepository.GetDistinctJobTitlesAsync(cancellationToken);
-                var jobTitlesList = jobTitles.ToList();
-
-                var response = new JobTitlesResponse
-                {
-                    JobTitles = jobTitlesList,
-                    Total = jobTitlesList.Count,
-                    Message = "Job titles retrieved successfully"
-                };
-
-                _logger.LogInformation("Retrieved {Count} job titles", jobTitlesList.Count);
-
-                return Ok(response);
+                var result = await _listJobTitlesQueryHandler.Handle(request, CancellationToken.None);
+                return Ok(result);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "An error occurred while retrieving job titles");
-                return StatusCode(500, new ErrorResponse("An error occurred while retrieving job titles"));
+                return StatusCode(500, new { error = ex.Message });
             }
         }
 
         /// <summary>
-        /// Gets detailed information about a specific job title
+        /// Obtém um cargo específico por ID
         /// </summary>
-        /// <param name="jobTitle">The job title to get information about</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Job title information with employee count</returns>
-        [HttpGet("{jobTitle}")]
-        [ProducesResponseType(typeof(JobTitleResponse), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetJobTitleInfo(string jobTitle, CancellationToken cancellationToken)
+        [HttpGet("{id}")]
+        public async Task<ActionResult<JobTitleResponse>> GetById(Guid id)
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(jobTitle))
-                {
-                    return BadRequest(new ErrorResponse("Job title cannot be null or empty"));
-                }
+                var request = new GetJobTitleByIdRequest { Id = id };
+                var result = await _getJobTitleByIdQueryHandler.Handle(request, CancellationToken.None);
+                
+                if (result == null)
+                    return NotFound(new { error = "Cargo não encontrado" });
 
-                _logger.LogInformation("Retrieving information for job title: {JobTitle}", jobTitle);
-
-                // Get employees with this job title
-                var employees = await _employeeRepository.GetByJobTitleAsync(jobTitle, cancellationToken);
-                var employeeCount = employees.Count();
-
-                if (employeeCount == 0)
-                {
-                    return NotFound(new ErrorResponse($"No employees found with job title: {jobTitle}"));
-                }
-
-                var response = new JobTitleResponse
-                {
-                    JobTitle = jobTitle,
-                    EmployeeCount = employeeCount,
-                    Message = $"Found {employeeCount} employee(s) with job title: {jobTitle}"
-                };
-
-                _logger.LogInformation("Retrieved information for job title: {JobTitle}, Employee count: {Count}", 
-                    jobTitle, employeeCount);
-
-                return Ok(response);
+                return Ok(result);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "An error occurred while retrieving job title information for: {JobTitle}", jobTitle);
-                return StatusCode(500, new ErrorResponse("An error occurred while retrieving job title information"));
+                return StatusCode(500, new { error = ex.Message });
             }
         }
 
+
+
         /// <summary>
-        /// Searches for job titles that contain the specified text
+        /// Lista cargos disponíveis para criação de usuários (baseado na hierarquia do usuário atual)
         /// </summary>
-        /// <param name="searchTerm">Text to search for in job titles</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Matching job titles</returns>
-        [HttpGet("search")]
-        [ProducesResponseType(typeof(JobTitlesResponse), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> SearchJobTitles(
-            [FromQuery] string searchTerm,
-            CancellationToken cancellationToken)
+        [HttpGet("available-for-creation")]
+        public async Task<ActionResult<IEnumerable<JobTitleResponse>>> GetAvailableForCreation()
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(searchTerm))
-                {
-                    return BadRequest(new ErrorResponse("Search term cannot be null or empty"));
-                }
-
-                _logger.LogInformation("Searching for job titles containing: {SearchTerm}", searchTerm);
-
-                var allJobTitles = await _employeeRepository.GetDistinctJobTitlesAsync(cancellationToken);
-                var matchingJobTitles = allJobTitles
-                    .Where(jt => jt.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
-                    .OrderBy(jt => jt)
-                    .ToList();
-
-                var response = new JobTitlesResponse
-                {
-                    JobTitles = matchingJobTitles,
-                    Total = matchingJobTitles.Count,
-                    Message = $"Found {matchingJobTitles.Count} job title(s) matching '{searchTerm}'"
-                };
-
-                _logger.LogInformation("Search completed for term: {SearchTerm}, Found: {Count} matches", 
-                    searchTerm, matchingJobTitles.Count);
-
-                return Ok(response);
+                // TODO: Implementar lógica de permissão hierárquica
+                // Por enquanto, retorna todos os cargos ativos
+                var request = new ListJobTitlesRequest { IsActive = true };
+                var result = await _listJobTitlesQueryHandler.Handle(request, CancellationToken.None);
+                return Ok(result.Items);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "An error occurred while searching job titles for term: {SearchTerm}", searchTerm);
-                return StatusCode(500, new ErrorResponse("An error occurred while searching job titles"));
+                return StatusCode(500, new { error = ex.Message });
             }
         }
     }

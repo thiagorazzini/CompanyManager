@@ -49,5 +49,28 @@ namespace CompanyManager.Domain.AccessControl
         {
             return Level.CanCreateRole(targetLevel);
         }
+
+        /// <summary>
+        /// Verifica se este role é SuperUser
+        /// </summary>
+        /// <returns>True se for SuperUser</returns>
+        public bool IsSuperUser()
+        {
+            return Level.IsSuperUser();
+        }
+
+        /// <summary>
+        /// Verifica se este role tem uma permissão específica
+        /// SuperUser tem todas as permissões
+        /// </summary>
+        /// <param name="permission">Permissão a verificar</param>
+        /// <returns>True se tiver a permissão</returns>
+        public bool HasPermission(string permission)
+        {
+            if (IsSuperUser())
+                return true; // SuperUser tem todas as permissões
+                
+            return _permissions.Contains(permission, StringComparer.OrdinalIgnoreCase);
+        }
     }
 }

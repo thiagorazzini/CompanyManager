@@ -11,8 +11,9 @@ namespace CompanyManager.Application.DTOs
         public string Email { get; set; } = string.Empty;
         public string DocumentNumber { get; set; } = string.Empty;
         public IEnumerable<string> PhoneNumbers { get; set; } = Array.Empty<string>();
-        public string JobTitle { get; set; } = string.Empty;
+        public Guid JobTitleId { get; set; }
         public Guid DepartmentId { get; set; }
         public Guid? ManagerId { get; set; } // Optional manager ID
+        public string? Password { get; set; } // Optional password for updates
     }
 }

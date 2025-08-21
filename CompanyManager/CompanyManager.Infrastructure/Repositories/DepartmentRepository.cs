@@ -96,9 +96,19 @@ public sealed class DepartmentRepository : IDepartmentRepository
 
     public async Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        return await _context.Departments
-            .AsNoTracking()
-            .AnyAsync(d => d.Id == id, cancellationToken);
+        try
+        {
+            return await _context.Departments
+                .AsNoTracking()
+                .AnyAsync(d => d.Id == id, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // Se a operação foi cancelada, tentar uma abordagem mais simples
+            return await _context.Departments
+                .AsNoTracking()
+                .CountAsync(d => d.Id == id, cancellationToken) > 0;
+        }
     }
 
     public async Task<bool> ExistsByNameAsync(string name, CancellationToken cancellationToken = default)
@@ -143,10 +153,10 @@ public sealed class DepartmentRepository : IDepartmentRepository
 
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var department = await GetByIdAsync(id, cancellationToken);
+        var department = await _context.Departments.FindAsync(id, cancellationToken);
         if (department != null)
         {
-            department.Deactivate();
+            _context.Departments.Remove(department); // Deletar fisicamente
             await _context.SaveChangesAsync(cancellationToken);
         }
     }

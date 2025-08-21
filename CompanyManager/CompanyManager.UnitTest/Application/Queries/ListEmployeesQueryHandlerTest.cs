@@ -27,7 +27,7 @@ namespace CompanyManager.UnitTest.Application.Queries
                 documentNumber: new DocumentNumber(cpf),
                 dateOfBirth: new DateOfBirth(DateTime.Today.AddYears(-30)),
                 phones: new[] { new PhoneNumber(phone, "BR") },
-                jobTitle: job,
+                jobTitleId: Guid.NewGuid(),
                 departmentId: departmentId
             );
         }
@@ -164,25 +164,34 @@ namespace CompanyManager.UnitTest.Application.Queries
             result.Items.All(i => i.DepartmentId == deptA).Should().BeTrue();
         }
 
-        [Fact(DisplayName = "Should filter by JobTitle (contains, case-insensitive)")]
-        public async Task Should_Filter_By_JobTitle()
+        [Fact(DisplayName = "Should filter by JobTitleId")]
+        public async Task Should_Filter_By_JobTitleId()
         {
             var dept = Guid.NewGuid();
+            var jobTitleId1 = Guid.NewGuid();
+            var jobTitleId2 = Guid.NewGuid();
 
             var repo = new InMemoryEmployeeRepository();
             var handler = new ListEmployeesQueryHandler(repo);
 
-            await SeedAsync(repo,
-                NewEmployee(dept, job: "Senior Developer", email: "a@x.com", cpf: "52998224725"),
-                NewEmployee(dept, job: "Junior Developer", email: "b@x.com", cpf: "11144477735"),
-                NewEmployee(dept, job: "QA Engineer", email: "c@x.com", cpf: "93541134780")
-            );
+            // Criar employees com JobTitleIds específicos
+            var emp1 = Employee.Create("John", "Doe", new Email("a@x.com"), new DocumentNumber("52998224725"), 
+                new DateOfBirth(DateTime.Today.AddYears(-30)), new[] { new PhoneNumber("11 99999-9999", "BR") }, 
+                jobTitleId1, dept);
+            var emp2 = Employee.Create("Jane", "Smith", new Email("b@x.com"), new DocumentNumber("11144477735"), 
+                new DateOfBirth(DateTime.Today.AddYears(-25)), new[] { new PhoneNumber("11 98888-8888", "BR") }, 
+                jobTitleId2, dept);
+            var emp3 = Employee.Create("Bob", "Brown", new Email("c@x.com"), new DocumentNumber("93541134780"), 
+                new DateOfBirth(DateTime.Today.AddYears(-35)), new[] { new PhoneNumber("11 97777-7777", "BR") }, 
+                jobTitleId1, dept);
 
-            var request = new ListEmployeesRequest { JobTitle = "developer", Page = 1, PageSize = 10 };
+            await SeedAsync(repo, emp1, emp2, emp3);
+
+            var request = new ListEmployeesRequest { JobTitleId = jobTitleId1, Page = 1, PageSize = 10 };
             var result = await handler.Handle(request, CancellationToken.None);
 
-            result.Total.Should().Be(2);
-            result.Items.Select(i => i.JobTitle).Should().AllSatisfy(j => j!.ToLowerInvariant().Contains("developer"));
+            result.Total.Should().Be(2); // emp1 e emp3 têm jobTitleId1
+            result.Items.All(i => i.JobTitleId == jobTitleId1).Should().BeTrue();
         }
 
         [Fact(DisplayName = "Should return empty page when no matches")]

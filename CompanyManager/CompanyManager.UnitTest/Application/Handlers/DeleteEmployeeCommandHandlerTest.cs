@@ -22,7 +22,7 @@ namespace CompanyManager.UnitTest.Application.Handlers
                 documentNumber: new DocumentNumber("52998224725"),
                 dateOfBirth: new DateOfBirth(DateTime.Today.AddYears(-30)),
                 phones: new[] { new PhoneNumber("11 91111-1111", "BR") },
-                jobTitle: "Developer",
+                jobTitleId: Guid.NewGuid(),
                 departmentId: deptId
             );
 

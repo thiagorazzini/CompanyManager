@@ -1,4 +1,5 @@
 ﻿using CompanyManager.Domain.Entities;
+using CompanyManager.Domain.AccessControl;
 using FluentAssertions;
 using System;
 using System.Collections.Generic;
@@ -13,16 +14,19 @@ namespace CompanyManager.UnitTest.Entities
         [Fact(DisplayName = "Should create active account with normalized username and password hash")]
         public void Create()
         {
+            var roleId = Guid.NewGuid();
             var acc = UserAccount.Create(
                 userName: "USER@Example.com",
                 passwordHash: "hash123",
-                employeeId: Guid.NewGuid());
+                employeeId: Guid.NewGuid(),
+                roleId: roleId);
 
             acc.UserName.Should().Be("user@example.com");
             acc.PasswordHash.Should().Be("hash123");
             acc.IsActive.Should().BeTrue();
             acc.AccessFailedCount.Should().Be(0);
             acc.SecurityStamp.Should().NotBe(Guid.Empty);
+            acc.RoleId.Should().Be(roleId);
         }
 
         [Fact(DisplayName = "Should change password updating PasswordChangedAt and SecurityStamp")]
@@ -44,11 +48,14 @@ namespace CompanyManager.UnitTest.Entities
         {
             var acc = FakeUser();
             for (var i = 0; i < 5; i++)
-                acc.RecordFailedLoginAttempt(maxAttempts: 5, lockoutFor: TimeSpan.FromMinutes(15));
+                acc.IncrementAccessFailedCount();
 
+            acc.AccessFailedCount.Should().Be(5);
+
+            acc.Lockout(DateTime.UtcNow.AddMinutes(15));
             acc.IsLockedOut.Should().BeTrue();
 
-            acc.UnlockNow();
+            acc.Unlock();
             acc.IsLockedOut.Should().BeFalse();
             acc.AccessFailedCount.Should().Be(0);
         }
@@ -57,8 +64,8 @@ namespace CompanyManager.UnitTest.Entities
         public void ResetFailuresOnSuccess()
         {
             var acc = FakeUser();
-            acc.RecordFailedLoginAttempt(5, TimeSpan.FromMinutes(15));
-            acc.ResetFailuresAfterSuccessfulLogin();
+            acc.IncrementAccessFailedCount();
+            acc.ResetAccessFailedCount();
             acc.AccessFailedCount.Should().Be(0);
         }
 
@@ -82,7 +89,61 @@ namespace CompanyManager.UnitTest.Entities
             acc.TwoFactorEnabled.Should().BeFalse();
         }
 
+        [Fact(DisplayName = "Should set role")]
+        public void SetRole()
+        {
+            var acc = FakeUser();
+            var newRoleId = Guid.NewGuid();
+            
+            acc.SetRole(newRoleId);
+            acc.RoleId.Should().Be(newRoleId);
+        }
+
+        [Fact(DisplayName = "Should validate permissions with role")]
+        public void ValidatePermissionsWithRole()
+        {
+            var acc = FakeUser();
+            var role = new Role("Manager", HierarchicalRole.Manager);
+            
+            acc.HasPermission(role, "employees:read").Should().BeTrue();
+            acc.HasPermission(role, "departments:write").Should().BeTrue();
+            acc.HasPermission(role, "invalid:permission").Should().BeFalse();
+        }
+
+        [Fact(DisplayName = "Should validate SuperUser permissions")]
+        public void ValidateSuperUserPermissions()
+        {
+            var acc = FakeUser();
+            var superUserRole = new Role("SuperUser", HierarchicalRole.SuperUser);
+            
+            acc.IsSuperUser(superUserRole).Should().BeTrue();
+            acc.HasPermission(superUserRole, "any:permission").Should().BeTrue();
+        }
+
+        [Fact(DisplayName = "Should validate role level")]
+        public void ValidateRoleLevel()
+        {
+            var acc = FakeUser();
+            var role = new Role("Senior", HierarchicalRole.Senior);
+            
+            acc.GetRoleLevel(role).Should().Be(HierarchicalRole.Senior);
+        }
+
+        [Fact(DisplayName = "Should validate role creation permissions")]
+        public void ValidateRoleCreationPermissions()
+        {
+            var acc = FakeUser();
+            var managerRole = new Role("Manager", HierarchicalRole.Manager);
+            var juniorRole = new Role("Junior", HierarchicalRole.Junior);
+            
+            acc.CanCreateRole(managerRole, HierarchicalRole.Junior).Should().BeTrue();
+            acc.CanCreateRole(managerRole, HierarchicalRole.Pleno).Should().BeTrue();
+            acc.CanCreateRole(managerRole, HierarchicalRole.Senior).Should().BeTrue();
+            acc.CanCreateRole(managerRole, HierarchicalRole.Manager).Should().BeTrue();
+            acc.CanCreateRole(managerRole, HierarchicalRole.Director).Should().BeFalse();
+        }
+
         private static UserAccount FakeUser() =>
-            UserAccount.Create("user@example.com", "hash", Guid.NewGuid());
+            UserAccount.Create("user@example.com", "hash", Guid.NewGuid(), Guid.NewGuid());
     }
 }

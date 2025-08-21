@@ -37,9 +37,11 @@ namespace CompanyManager.Application
             services.AddScoped<CreateEmployeeHandler>();
             services.AddScoped<IUpdateEmployeeCommandHandler, UpdateEmployeeCommandHandler>();
             services.AddScoped<IDeleteEmployeeCommandHandler, DeleteEmployeeCommandHandler>();
-            services.AddScoped<ICreateDepartmentCommandHandler, CreateDepartmentCommandHandler>();
-            services.AddScoped<IUpdateDepartmentCommandHandler, UpdateDepartmentCommandHandler>();
-            services.AddScoped<IDeleteDepartmentCommandHandler, DeleteDepartmentCommandHandler>();
+                    services.AddScoped<ICreateDepartmentCommandHandler, CreateDepartmentCommandHandler>();
+        services.AddScoped<IUpdateDepartmentCommandHandler, UpdateDepartmentCommandHandler>();
+        services.AddScoped<IDeleteDepartmentCommandHandler, DeleteDepartmentCommandHandler>();
+        
+        // JobTitle handlers (se necessário no futuro)
             services.AddScoped<IAuthenticateCommandHandler, AuthenticateCommandHandler>();
             services.AddScoped<IRefreshTokenCommandHandler, RefreshTokenCommandHandler>();
             services.AddScoped<IChangePasswordCommandHandler, ChangePasswordCommandHandler>();
@@ -50,6 +52,10 @@ namespace CompanyManager.Application
             services.AddScoped<IGetEmployeeByIdQueryHandler, GetEmployeeByIdQueryHandler>();
             services.AddScoped<IListDepartmentsQueryHandler, ListDepartmentsQueryHandler>();
             services.AddScoped<IListEmployeesQueryHandler, ListEmployeesQueryHandler>();
+            
+            // Register JobTitle query handlers
+            services.AddScoped<IGetJobTitleByIdQueryHandler, GetJobTitleByIdQueryHandler>();
+            services.AddScoped<IListJobTitlesQueryHandler, ListJobTitlesQueryHandler>();
 
             // Register validators
             services.AddScoped<CreateEmployeeRequestValidator>();
@@ -66,6 +72,12 @@ namespace CompanyManager.Application
             services.AddScoped<CompanyManager.Domain.Interfaces.IPasswordHasher, PasswordHasher>();
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<ICurrentUserService, CurrentUserService>();
+            
+            // Register TokenService
+            services.AddScoped<CompanyManager.Application.Auth.Interfaces.ITokenService, CompanyManager.Application.Auth.TokenService>();
+            
+            // Register JwtOptions configuration
+            services.Configure<CompanyManager.Application.Auth.JwtOptions>(options => { });
 
             return services;
         }

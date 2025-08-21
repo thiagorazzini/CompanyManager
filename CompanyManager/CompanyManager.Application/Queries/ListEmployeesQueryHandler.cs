@@ -18,7 +18,7 @@ namespace CompanyManager.Application.Queries
             var filter = new EmployeeFilter(
                 DepartmentId: request.DepartmentId,
                 NameOrEmail: string.IsNullOrWhiteSpace(request.NameContains) ? null : request.NameContains.Trim(),
-                JobTitle: string.IsNullOrWhiteSpace(request.JobTitle) ? null : request.JobTitle.Trim()
+                JobTitleId: request.JobTitleId
             );
 
             var page = new PageRequest(

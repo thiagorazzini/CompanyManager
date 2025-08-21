@@ -37,7 +37,7 @@ namespace CompanyManager.Domain.ValueObjects
 
             if (local.Length is < 1 or > 64)
                 throw new ArgumentException("Invalid email format", nameof(value));
-            if (trimmed.Length > 254)        // total até 254
+            if (trimmed.Length > 254)
                 throw new ArgumentException("Invalid email format", nameof(value));
 
 
