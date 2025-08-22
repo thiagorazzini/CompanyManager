@@ -1,4 +1,4 @@
-﻿using CompanyManager.API.Models;
+using CompanyManager.API.Models;
 using CompanyManager.API.Models.Responses;
 using CompanyManager.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Mvc;

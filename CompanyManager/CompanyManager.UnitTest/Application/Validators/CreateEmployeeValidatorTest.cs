@@ -20,7 +20,7 @@ namespace CompanyManager.UnitTest.Application.Validators
                 FirstName = "João",
                 LastName = "Silva",
                 Email = "joao.silva@empresa.com",
-                DocumentNumber = "12345678901",
+                DocumentNumber = "52998224725",
                 DateOfBirth = "1990-01-01",
                 PhoneNumbers = new List<string> { "+5511999999999" },
                 JobTitleId = Guid.NewGuid(),
@@ -96,7 +96,7 @@ namespace CompanyManager.UnitTest.Application.Validators
 
         [Theory(DisplayName = "Should reject invalid CPF (length, repeated digits, wrong check digits)")]
         [InlineData("123")]              // curto
-        [InlineData("123456789012")]     // longo
+        [InlineData("529982247252")]     // longo
         [InlineData("00000000000")]      // repetidos
         [InlineData("11111111111")]      // repetidos
         [InlineData("12345678900")]      // DV inválido
@@ -193,7 +193,7 @@ namespace CompanyManager.UnitTest.Application.Validators
         }
 
         [Theory(DisplayName = "Should accept valid DepartmentId")]
-        [InlineData("12345678-1234-1234-1234-123456789012")]
+        [InlineData("12345678-1234-1234-1234-529982247252")]
         public void Should_Accept_Valid_DepartmentId(string departmentId)
         {
             var r = BuildValidRequest();

@@ -1,4 +1,4 @@
-ï»¿using CompanyManager.Application.Auth;
+using CompanyManager.Application.Auth;
 using CompanyManager.Application.Auth.Interfaces;
 using CompanyManager.Domain.Entities;
 using System.Security.Claims;
@@ -28,7 +28,7 @@ namespace CompanyManager.UnitTest.Application.TestDouble
         public string GenerateAccessToken(UserAccount user, IEnumerable<Claim>? extraClaims = null)
         {
             GenerateAccessTokenCalls++;
-            Calls++;                 // mantÃ©m compatÃ­vel com tokens.Calls nos testes
+            Calls++;                 // mantém compatível com tokens.Calls nos testes
             LastUserId = user.Id;    // os testes verificam este valor
             LastGeneratedToken = "stub.jwt.token"; // Token fixo esperado pelos testes
             return LastGeneratedToken;
@@ -37,7 +37,7 @@ namespace CompanyManager.UnitTest.Application.TestDouble
         public Task<string> GenerateAccessTokenAsync(UserAccount user, CancellationToken cancellationToken = default)
         {
             GenerateAccessTokenCalls++;
-            Calls++;                 // mantÃ©m compatÃ­vel com tokens.Calls nos testes
+            Calls++;                 // mantém compatível com tokens.Calls nos testes
             LastUserId = user.Id;    // os testes verificam este valor
             LastGeneratedToken = "stub.jwt.token"; // Token fixo esperado pelos testes
             return Task.FromResult(LastGeneratedToken);

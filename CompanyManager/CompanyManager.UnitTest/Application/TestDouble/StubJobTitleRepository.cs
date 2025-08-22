@@ -7,8 +7,9 @@ namespace CompanyManager.UnitTest.Application.TestDouble
     {
         public Task<JobTitle?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            // Criar um JobTitle fake para os testes
-            var jobTitle = JobTitle.Create("Developer", 3, "Software Developer");
+            // Criar um JobTitle fake para os testes com nível adequado
+            // Usar um ID fixo para garantir consistência nos testes
+            var jobTitle = JobTitle.Create("Developer", 4, "Software Developer");
             return Task.FromResult<JobTitle?>(jobTitle);
         }
 

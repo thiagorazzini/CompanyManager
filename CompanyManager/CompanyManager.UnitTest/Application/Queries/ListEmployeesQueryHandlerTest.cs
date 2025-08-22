@@ -1,4 +1,4 @@
-ï»¿using CompanyManager.Application.Common;
+using CompanyManager.Application.Common;
 using CompanyManager.Application.Queries;
 using CompanyManager.Application.DTOs;
 using CompanyManager.Domain.Entities;
@@ -53,8 +53,8 @@ namespace CompanyManager.UnitTest.Application.Queries
                 NewEmployee(deptA, "John", "Doe", "john@x.com", "52998224725", "Developer"),
                 NewEmployee(deptA, "Jane", "Doe", "jane@x.com", "11144477735", "QA"),
                 NewEmployee(deptA, "Alice", "Smith", "alice@x.com", "93541134780", "Developer"),
-                NewEmployee(deptB, "Bob", "Brown", "bob@x.com", "86420753171", "Manager"),   // <-- vÃ¡lido
-                NewEmployee(deptB, "Eve", "Stone", "eve@x.com", "74685296397", "DevOps")     // <-- vÃ¡lido
+                NewEmployee(deptB, "Bob", "Brown", "bob@x.com", "86420753171", "Manager"),   // <-- válido
+                NewEmployee(deptB, "Eve", "Stone", "eve@x.com", "74685296397", "DevOps")     // <-- válido
             );
 
             var request = new ListEmployeesRequest { Page = 1, PageSize = 2 };
@@ -75,7 +75,7 @@ namespace CompanyManager.UnitTest.Application.Queries
 
             var dept = Guid.NewGuid();
 
-            // gera 5 CPFs vÃ¡lidos
+            // gera 5 CPFs válidos
             var cpf1 = MakeCpf("123456789");
             var cpf2 = MakeCpf("987654321");
             var cpf3 = MakeCpf("012345678");
@@ -93,7 +93,7 @@ namespace CompanyManager.UnitTest.Application.Queries
             var request = new ListEmployeesRequest { Page = 3, PageSize = 2 };
             var result = await handler.Handle(request, CancellationToken.None);
 
-            result.Items.Should().HaveCount(1); // 5 itens, pageSize 2 -> pÃ¡gina 3 tem 1
+            result.Items.Should().HaveCount(1); // 5 itens, pageSize 2 -> página 3 tem 1
             result.Total.Should().Be(5);
             result.HasNext.Should().BeFalse();
             result.HasPrev.Should().BeTrue();
@@ -174,7 +174,7 @@ namespace CompanyManager.UnitTest.Application.Queries
             var repo = new InMemoryEmployeeRepository();
             var handler = new ListEmployeesQueryHandler(repo);
 
-            // Criar employees com JobTitleIds especÃ­ficos
+            // Criar employees com JobTitleIds específicos
             var emp1 = Employee.Create("John", "Doe", new Email("a@x.com"), new DocumentNumber("52998224725"), 
                 new DateOfBirth(DateTime.Today.AddYears(-30)), new[] { "11 99999-9999" }, 
                 jobTitleId1, dept);
@@ -190,7 +190,7 @@ namespace CompanyManager.UnitTest.Application.Queries
             var request = new ListEmployeesRequest { JobTitleId = jobTitleId1, Page = 1, PageSize = 10 };
             var result = await handler.Handle(request, CancellationToken.None);
 
-            result.Total.Should().Be(2); // emp1 e emp3 tÃªm jobTitleId1
+            result.Total.Should().Be(2); // emp1 e emp3 têm jobTitleId1
             result.Items.All(i => i.JobTitleId == jobTitleId1).Should().BeTrue();
         }
 

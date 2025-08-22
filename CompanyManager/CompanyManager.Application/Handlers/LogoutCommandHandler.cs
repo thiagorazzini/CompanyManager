@@ -23,7 +23,8 @@ namespace CompanyManager.Application.Handlers
         {
             try
             {
-
+                cancellationToken.ThrowIfCancellationRequested();
+                
                 _logger.LogInformation("User logged out successfully");
                 
                 await Task.CompletedTask;

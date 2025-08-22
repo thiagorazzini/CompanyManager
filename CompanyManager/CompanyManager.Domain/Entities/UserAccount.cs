@@ -1,4 +1,4 @@
-Ôªøusing CompanyManager.Domain.AccessControl;
+using CompanyManager.Domain.AccessControl;
 using CompanyManager.Domain.Common;
 
 namespace CompanyManager.Domain.Entities
@@ -11,7 +11,7 @@ namespace CompanyManager.Domain.Entities
         public Guid SecurityStamp { get; private set; } = Guid.NewGuid();
         public DateTime PasswordChangedAt { get; private set; } = DateTime.UtcNow;
         
-        // Role - agora apenas um ID em vez de cole√ß√£o
+        // Role - agora apenas um ID em vez de coleÁ„o
         public Guid RoleId { get; private set; }
         
         // State
@@ -157,15 +157,15 @@ namespace CompanyManager.Domain.Entities
             UpdateModifiedAt(); 
         }
 
-        // M√©todos de valida√ß√£o de permiss√µes agora precisam receber a Role como par√¢metro
-        // j√° que n√£o temos mais acesso direto √† cole√ß√£o de roles
+        // MÈtodos de validaÁ„o de permissıes agora precisam receber a Role como par‚metro
+        // j· que n„o temos mais acesso direto ‡ coleÁ„o de roles
         
         /// <summary>
-        /// Verifica se o usu√°rio pode criar funcion√°rios com o role especificado
+        /// Verifica se o usu·rio pode criar funcion·rios com o role especificado
         /// </summary>
-        /// <param name="userRole">Role do usu√°rio atual</param>
-        /// <param name="targetRole">Role que est√° sendo criado</param>
-        /// <returns>True se o usu√°rio pode criar funcion√°rios com o role especificado</returns>
+        /// <param name="userRole">Role do usu·rio atual</param>
+        /// <param name="targetRole">Role que est· sendo criado</param>
+        /// <returns>True se o usu·rio pode criar funcion·rios com o role especificado</returns>
         public bool CanCreateRole(Role userRole, HierarchicalRole targetRole)
         {
             if (userRole is null) return false;
@@ -173,66 +173,66 @@ namespace CompanyManager.Domain.Entities
         }
 
         /// <summary>
-        /// Verifica se o usu√°rio √© SuperUser
+        /// Verifica se o usu·rio È SuperUser
         /// </summary>
-        /// <param name="userRole">Role do usu√°rio atual</param>
-        /// <returns>True se o usu√°rio for SuperUser</returns>
+        /// <param name="userRole">Role do usu·rio atual</param>
+        /// <returns>True se o usu·rio for SuperUser</returns>
         public bool IsSuperUser(Role userRole)
         {
             return userRole?.IsSuperUser() ?? false;
         }
 
         /// <summary>
-        /// Obt√©m o n√≠vel hier√°rquico do usu√°rio
+        /// ObtÈm o nÌvel hier·rquico do usu·rio
         /// </summary>
-        /// <param name="userRole">Role do usu√°rio atual</param>
-        /// <returns>N√≠vel hier√°rquico</returns>
+        /// <param name="userRole">Role do usu·rio atual</param>
+        /// <returns>NÌvel hier·rquico</returns>
         public HierarchicalRole GetRoleLevel(Role userRole)
         {
             return userRole?.Level ?? HierarchicalRole.Junior;
         }
 
         /// <summary>
-        /// Verifica se o usu√°rio tem uma permiss√£o espec√≠fica
-        /// SuperUser tem todas as permiss√µes
+        /// Verifica se o usu·rio tem uma permiss„o especÌfica
+        /// SuperUser tem todas as permissıes
         /// </summary>
-        /// <param name="userRole">Role do usu√°rio atual</param>
-        /// <param name="permission">Permiss√£o a verificar</param>
-        /// <returns>True se tiver a permiss√£o</returns>
+        /// <param name="userRole">Role do usu·rio atual</param>
+        /// <param name="permission">Permiss„o a verificar</param>
+        /// <returns>True se tiver a permiss„o</returns>
         public bool HasPermission(Role userRole, string permission)
         {
             if (userRole?.IsSuperUser() == true)
-                return true; // SuperUser tem todas as permiss√µes
+                return true; // SuperUser tem todas as permissıes
                 
             return userRole?.HasPermission(permission) ?? false;
         }
 
         /// <summary>
-        /// Verifica se o usu√°rio pode modificar outro usu√°rio
-        /// SuperUser pode modificar qualquer usu√°rio
-        /// Usu√°rios s√≥ podem modificar usu√°rios com n√≠vel hier√°rquico inferior
+        /// Verifica se o usu·rio pode modificar outro usu·rio
+        /// SuperUser pode modificar qualquer usu·rio
+        /// Usu·rios sÛ podem modificar usu·rios com nÌvel hier·rquico inferior
         /// </summary>
-        /// <param name="userRole">Role do usu√°rio atual</param>
-        /// <param name="targetUser">Usu√°rio que est√° sendo modificado</param>
-        /// <param name="targetUserRole">Role do usu√°rio alvo</param>
-        /// <returns>True se o usu√°rio pode modificar o usu√°rio alvo</returns>
+        /// <param name="userRole">Role do usu·rio atual</param>
+        /// <param name="targetUser">Usu·rio que est· sendo modificado</param>
+        /// <param name="targetUserRole">Role do usu·rio alvo</param>
+        /// <returns>True se o usu·rio pode modificar o usu·rio alvo</returns>
         public bool CanModifyUser(Role userRole, UserAccount targetUser, Role targetUserRole)
         {
             if (targetUser is null || userRole is null || targetUserRole is null) return false;
             
-            // SuperUser pode modificar qualquer usu√°rio
+            // SuperUser pode modificar qualquer usu·rio
             if (userRole.IsSuperUser()) return true;
             
-            // Usu√°rio s√≥ pode modificar usu√°rios com n√≠vel hier√°rquico inferior
+            // Usu·rio sÛ pode modificar usu·rios com nÌvel hier·rquico inferior
             return userRole.Level > targetUserRole.Level;
         }
 
         /// <summary>
-        /// Verifica se o usu√°rio pode modificar um departamento
+        /// Verifica se o usu·rio pode modificar um departamento
         /// </summary>
-        /// <param name="userRole">Role do usu√°rio atual</param>
-        /// <param name="department">Departamento que est√° sendo modificado</param>
-        /// <returns>True se o usu√°rio pode modificar o departamento</returns>
+        /// <param name="userRole">Role do usu·rio atual</param>
+        /// <param name="department">Departamento que est· sendo modificado</param>
+        /// <returns>True se o usu·rio pode modificar o departamento</returns>
         public bool CanModifyDepartment(Role userRole, Department department)
         {
             if (userRole is null || department is null) return false;
@@ -245,11 +245,11 @@ namespace CompanyManager.Domain.Entities
         }
 
         /// <summary>
-        /// Verifica se o usu√°rio pode modificar um cargo
+        /// Verifica se o usu·rio pode modificar um cargo
         /// </summary>
-        /// <param name="userRole">Role do usu√°rio atual</param>
-        /// <param name="jobTitle">Cargo que est√° sendo modificado</param>
-        /// <returns>True se o usu√°rio pode modificar o cargo</returns>
+        /// <param name="userRole">Role do usu·rio atual</param>
+        /// <param name="jobTitle">Cargo que est· sendo modificado</param>
+        /// <returns>True se o usu·rio pode modificar o cargo</returns>
         public bool CanModifyJobTitle(Role userRole, JobTitle jobTitle)
         {
             if (userRole is null || jobTitle is null) return false;
@@ -262,20 +262,20 @@ namespace CompanyManager.Domain.Entities
         }
 
         /// <summary>
-        /// Verifica se o usu√°rio pode modificar um funcion√°rio
+        /// Verifica se o usu·rio pode modificar um funcion·rio
         /// </summary>
-        /// <param name="userRole">Role do usu√°rio atual</param>
-        /// <param name="employee">Funcion√°rio que est√° sendo modificado</param>
-        /// <param name="employeeJobTitle">Cargo do funcion√°rio</param>
-        /// <returns>True se o usu√°rio pode modificar o funcion√°rio</returns>
+        /// <param name="userRole">Role do usu·rio atual</param>
+        /// <param name="employee">Funcion·rio que est· sendo modificado</param>
+        /// <param name="employeeJobTitle">Cargo do funcion·rio</param>
+        /// <returns>True se o usu·rio pode modificar o funcion·rio</returns>
         public bool CanModifyEmployee(Role userRole, Employee employee, JobTitle employeeJobTitle)
         {
             if (userRole is null || employee is null || employeeJobTitle is null) return false;
             
-            // SuperUser pode modificar qualquer funcion√°rio
+            // SuperUser pode modificar qualquer funcion·rio
             if (userRole.IsSuperUser()) return true;
             
-            // Apenas Manager e Director podem modificar funcion√°rios
+            // Apenas Manager e Director podem modificar funcion·rios
             return userRole.Level >= HierarchicalRole.Manager;
         }
     }

@@ -65,7 +65,7 @@ namespace CompanyManager.UnitTest.ValueObjects
 
         [Theory(DisplayName = "Should reject too short/too long numbers (generic 8..15 digits)")]
         [InlineData("+55 11 999", "Invalid phone number format")] // curto
-        [InlineData("+999 1234567890123456", "Invalid phone number format")] // >15 d�gitos
+        [InlineData("+999 5299822472523456", "Invalid phone number format")] // >15 d�gitos
         public void Should_Reject_Length_Out_Of_Bounds(string input, string partMessage)
         {
             var ex = Assert.Throws<ArgumentException>(() => new PhoneNumber(input));

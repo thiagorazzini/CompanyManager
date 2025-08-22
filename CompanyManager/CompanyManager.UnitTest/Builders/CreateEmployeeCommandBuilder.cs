@@ -27,7 +27,7 @@ namespace CompanyManager.UnitTest.Builders
                 FirstName = "João",
                 LastName = "Silva",
                 Email = "joao.silva@empresa.com",
-                DocumentNumber = "12345678901",
+                DocumentNumber = "52998224725",
                 DateOfBirth = "1990-01-01",
                 Phones = new List<string> { "+5511999999999" },
                 JobTitleId = Guid.NewGuid(),

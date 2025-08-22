@@ -1,4 +1,4 @@
-﻿using CompanyManager.Application.Auth;
+using CompanyManager.Application.Auth;
 using CompanyManager.Application.Services;
 using CompanyManager.Domain.Entities;
 using CompanyManager.Domain.Interfaces;
@@ -48,7 +48,7 @@ namespace CompanyManager.UnitTest.Application.Services
 
         private static UserAccount NewUser(string email)
         {
-            // Ajuste para sua factory real se necessário
+            // Ajuste para sua factory real se necess�rio
             return UserAccount.Create(
                 userName: email.Trim().ToLowerInvariant(),
                 passwordHash: "x",
@@ -117,7 +117,7 @@ namespace CompanyManager.UnitTest.Application.Services
 
             Action act = () => handler.ValidateToken(
                 token,
-                Validation(opts.Value.Issuer, opts.Value.Audience, "WRONG-SECRET-0123456789012345"),
+                Validation(opts.Value.Issuer, opts.Value.Audience, "WRONG-SECRET-0529982247252345"),
                 out _);
 
             act.Should().Throw<SecurityTokenException>();

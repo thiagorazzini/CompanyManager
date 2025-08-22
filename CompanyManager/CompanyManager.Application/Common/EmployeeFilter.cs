@@ -1,4 +1,4 @@
-﻿namespace CompanyManager.Application.Common
+namespace CompanyManager.Application.Common
 {
     public sealed record EmployeeFilter(
         string? NameOrEmail = null,

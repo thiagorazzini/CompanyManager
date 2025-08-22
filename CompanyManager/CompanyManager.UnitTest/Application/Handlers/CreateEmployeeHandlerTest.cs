@@ -53,16 +53,34 @@ namespace CompanyManager.UnitTest.Application.Handlers
                 _mockLogger.Object);
         }
 
+        private void SetupCommonMocks()
+        {
+            _mockRoleManagementService.Setup(x => x.GetOrCreateRoleByHierarchyLevelAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Role("TestRole", HierarchicalRole.Pleno));
+            _mockAuthorizationService.Setup(x => x.CanCreateEmployeeWithRoleAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+            _mockValidationService.Setup(x => x.ValidateEmailNotInUseAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+            _mockValidationService.Setup(x => x.ValidateDocumentNotInUseAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+            _mockValidationService.Setup(x => x.ValidateDepartmentExistsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+            _mockValidationService.Setup(x => x.ValidateJobTitleExistsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+        }
+
         [Fact]
         public async Task Handle_ValidCommand_ShouldCreateEmployeeAndUserAccount()
         {
             // Arrange
+            SetupCommonMocks();
+            
             var command = new CreateEmployeeCommand
             {
                 FirstName = "John",
                 LastName = "Doe",
                 Email = "john.doe@test.com",
-                DocumentNumber = "12345678901",
+                DocumentNumber = "52998224725",
                 DateOfBirth = "1990-01-01",
                 Phones = new List<string> { "11999999999" },
                 JobTitleId = Guid.NewGuid(),
@@ -76,7 +94,7 @@ namespace CompanyManager.UnitTest.Application.Handlers
             var currentUser = UserAccount.Create("manager@test.com", "hash", Guid.NewGuid(), currentUserRoleId, Guid.NewGuid());
             var department = Department.Create("IT", "Information Technology");
             var jobTitle = JobTitle.Create("Developer", 4, "Software Developer"); // Nível 4 = Pleno
-            var employee = Employee.Create("John", "Doe", new Email("john@test.com"), new DocumentNumber("12345678901"), 
+            var employee = Employee.Create("John", "Doe", new Email("john@test.com"), new DocumentNumber("52998224725"), 
                 new DateOfBirth(DateTime.Parse("1990-01-01")), new[] { "+5511999999999" }, jobTitle.Id, department.Id);
 
             _mockUserRepository.Setup(x => x.GetByIdAsync(currentUserId, It.IsAny<CancellationToken>()))
@@ -108,7 +126,7 @@ namespace CompanyManager.UnitTest.Application.Handlers
                 FirstName = "John",
                 LastName = "Doe",
                 Email = "john.doe@test.com",
-                DocumentNumber = "12345678901",
+                DocumentNumber = "52998224725",
                 DateOfBirth = "1990-01-01",
                 Phones = new List<string> { "11999999999" },
                 JobTitleId = Guid.NewGuid(),
@@ -117,6 +135,23 @@ namespace CompanyManager.UnitTest.Application.Handlers
             };
             var currentUserId = Guid.NewGuid();
 
+            // Setup mocks to pass validation but fail on user authorization
+            var department = Department.Create("IT", "Information Technology");
+            var jobTitle = JobTitle.Create("Developer", 4, "Software Developer");
+            
+            _mockDepartmentRepository.Setup(x => x.GetByIdAsync(command.DepartmentId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(department);
+            _mockJobTitleRepository.Setup(x => x.GetByIdAsync(command.JobTitleId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(jobTitle);
+            _mockValidationService.Setup(x => x.ValidateEmailNotInUseAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+            _mockValidationService.Setup(x => x.ValidateDocumentNotInUseAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+            _mockValidationService.Setup(x => x.ValidateDepartmentExistsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+            _mockValidationService.Setup(x => x.ValidateJobTitleExistsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+                
             _mockUserRepository.Setup(x => x.GetByIdAsync(currentUserId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((UserAccount?)null);
 
@@ -134,7 +169,7 @@ namespace CompanyManager.UnitTest.Application.Handlers
                 FirstName = "John",
                 LastName = "Doe",
                 Email = "john.doe@test.com",
-                DocumentNumber = "12345678901",
+                DocumentNumber = "52998224725",
                 DateOfBirth = "1990-01-01",
                 Phones = new List<string> { "11999999999" },
                 JobTitleId = Guid.NewGuid(),
@@ -144,8 +179,27 @@ namespace CompanyManager.UnitTest.Application.Handlers
             var currentUserId = Guid.NewGuid();
             var currentUser = UserAccount.Create("user@test.com", "hash", Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
 
+            // Setup mocks to pass validation but fail on role authorization
+            var department = Department.Create("IT", "Information Technology");
+            var jobTitle = JobTitle.Create("Developer", 4, "Software Developer");
+            
+            _mockDepartmentRepository.Setup(x => x.GetByIdAsync(command.DepartmentId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(department);
+            _mockJobTitleRepository.Setup(x => x.GetByIdAsync(command.JobTitleId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(jobTitle);
+            _mockValidationService.Setup(x => x.ValidateEmailNotInUseAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+            _mockValidationService.Setup(x => x.ValidateDocumentNotInUseAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+            _mockValidationService.Setup(x => x.ValidateDepartmentExistsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+            _mockValidationService.Setup(x => x.ValidateJobTitleExistsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+            
             _mockUserRepository.Setup(x => x.GetByIdAsync(currentUserId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(currentUser);
+            _mockAuthorizationService.Setup(x => x.CanCreateEmployeeWithRoleAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new UnauthorizedAccessException("Current user role not found."));
 
             // Act & Assert
             await Assert.ThrowsAsync<UnauthorizedAccessException>(() => 
@@ -161,7 +215,7 @@ namespace CompanyManager.UnitTest.Application.Handlers
                 FirstName = "John",
                 LastName = "Doe",
                 Email = "john.doe@test.com",
-                DocumentNumber = "12345678901",
+                DocumentNumber = "52998224725",
                 DateOfBirth = "1990-01-01",
                 Phones = new List<string> { "11999999999" },
                 JobTitleId = Guid.NewGuid(),
@@ -192,12 +246,14 @@ namespace CompanyManager.UnitTest.Application.Handlers
         public async Task Handle_UserCanCreateLowerRole_ShouldSucceed()
         {
             // Arrange
+            SetupCommonMocks();
+            
             var command = new CreateEmployeeCommand
             {
                 FirstName = "John",
                 LastName = "Doe",
                 Email = "john.doe@test.com",
-                DocumentNumber = "12345678901",
+                DocumentNumber = "52998224725",
                 DateOfBirth = "1990-01-01",
                 Phones = new List<string> { "11999999999" },
                 JobTitleId = Guid.NewGuid(),
@@ -211,7 +267,7 @@ namespace CompanyManager.UnitTest.Application.Handlers
             var currentUser = UserAccount.Create("manager@test.com", "hash", Guid.NewGuid(), currentUserRoleId, Guid.NewGuid());
             var department = Department.Create("IT", "Information Technology");
             var jobTitle = JobTitle.Create("Developer", 5, "Software Developer"); // Nível 5 = Junior (mais baixo que Manager)
-            var employee = Employee.Create("John", "Doe", new Email("john@test.com"), new DocumentNumber("12345678901"), 
+            var employee = Employee.Create("John", "Doe", new Email("john@test.com"), new DocumentNumber("52998224725"), 
                 new DateOfBirth(DateTime.Parse("1990-01-01")), new[] { "+5511999999999" }, jobTitle.Id, department.Id);
 
             _mockUserRepository.Setup(x => x.GetByIdAsync(currentUserId, It.IsAny<CancellationToken>()))
@@ -236,12 +292,14 @@ namespace CompanyManager.UnitTest.Application.Handlers
         public async Task Handle_SuperUserCanCreateAnyRole_ShouldSucceed()
         {
             // Arrange
+            SetupCommonMocks();
+            
             var command = new CreateEmployeeCommand
             {
                 FirstName = "John",
                 LastName = "Doe",
                 Email = "john.doe@test.com",
-                DocumentNumber = "12345678901",
+                DocumentNumber = "52998224725",
                 DateOfBirth = "1990-01-01",
                 Phones = new List<string> { "11999999999" },
                 JobTitleId = Guid.NewGuid(),
@@ -255,7 +313,7 @@ namespace CompanyManager.UnitTest.Application.Handlers
             var currentUser = UserAccount.Create("superuser@test.com", "hash", Guid.NewGuid(), currentUserRoleId, Guid.NewGuid());
             var department = Department.Create("IT", "Information Technology");
             var jobTitle = JobTitle.Create("Director", 1, "Company Director"); // Nível 1 = Director
-            var employee = Employee.Create("John", "Doe", new Email("john@test.com"), new DocumentNumber("12345678901"), 
+            var employee = Employee.Create("John", "Doe", new Email("john@test.com"), new DocumentNumber("52998224725"), 
                 new DateOfBirth(DateTime.Parse("1990-01-01")), new[] { "+5511999999999" }, jobTitle.Id, department.Id);
 
             _mockUserRepository.Setup(x => x.GetByIdAsync(currentUserId, It.IsAny<CancellationToken>()))
@@ -285,7 +343,7 @@ namespace CompanyManager.UnitTest.Application.Handlers
                 FirstName = "John",
                 LastName = "Doe",
                 Email = "john.doe@test.com",
-                DocumentNumber = "12345678901",
+                DocumentNumber = "52998224725",
                 DateOfBirth = "1990-01-01",
                 Phones = new List<string> { "11999999999" },
                 JobTitleId = Guid.NewGuid(),
@@ -305,7 +363,7 @@ namespace CompanyManager.UnitTest.Application.Handlers
                 .ReturnsAsync(existingUser);
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() => 
+            await Assert.ThrowsAsync<ValidationException>(() => 
                 _handler.Handle(command, CancellationToken.None, currentUserId));
         }
 
@@ -318,7 +376,7 @@ namespace CompanyManager.UnitTest.Application.Handlers
                 FirstName = "John",
                 LastName = "Doe",
                 Email = "john.doe@test.com",
-                DocumentNumber = "12345678901",
+                DocumentNumber = "52998224725",
                 DateOfBirth = "1990-01-01",
                 Phones = new List<string> { "11999999999" },
                 JobTitleId = Guid.NewGuid(),
@@ -339,7 +397,7 @@ namespace CompanyManager.UnitTest.Application.Handlers
                 .ReturnsAsync((Department?)null);
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() => 
+            await Assert.ThrowsAsync<ValidationException>(() => 
                 _handler.Handle(command, CancellationToken.None, currentUserId));
         }
 
@@ -352,7 +410,7 @@ namespace CompanyManager.UnitTest.Application.Handlers
                 FirstName = "John",
                 LastName = "Doe",
                 Email = "john.doe@test.com",
-                DocumentNumber = "12345678901",
+                DocumentNumber = "52998224725",
                 DateOfBirth = "1990-01-01",
                 Phones = new List<string> { "11999999999" },
                 JobTitleId = Guid.NewGuid(),
@@ -376,7 +434,7 @@ namespace CompanyManager.UnitTest.Application.Handlers
                 .ReturnsAsync((JobTitle?)null);
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() => 
+            await Assert.ThrowsAsync<ValidationException>(() => 
                 _handler.Handle(command, CancellationToken.None, currentUserId));
         }
     }

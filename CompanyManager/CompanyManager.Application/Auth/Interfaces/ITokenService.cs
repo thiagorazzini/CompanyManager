@@ -1,4 +1,4 @@
-﻿using CompanyManager.Domain.Entities;
+using CompanyManager.Domain.Entities;
 using System.Security.Claims;
 
 namespace CompanyManager.Application.Auth.Interfaces

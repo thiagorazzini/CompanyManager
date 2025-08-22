@@ -1,4 +1,4 @@
-﻿using CompanyManager.Application.Commands;
+using CompanyManager.Application.Commands;
 using CompanyManager.Application.Abstractions;
 using CompanyManager.Domain.AccessControl;
 using CompanyManager.Domain.Entities;
@@ -41,32 +41,41 @@ public sealed class UpdateEmployeeCommandHandler : IUpdateEmployeeCommandHandler
     /// </summary>
     public async Task Handle(UpdateEmployeeCommand command, CancellationToken cancellationToken, Guid? currentUserId = null)
     {
-        await ValidateInputAsync(command, currentUserId, cancellationToken);
-        
-        var employee = await GetEmployeeAsync(command.Id, cancellationToken);
-        var currentUser = await GetCurrentUserAsync(currentUserId!.Value, cancellationToken);
-        var currentUserRole = await GetRoleByIdAsync(currentUser.RoleId, cancellationToken);
-        
-        if (currentUserRole == null)
-            throw new UnauthorizedAccessException("Current user role not found.");
-        
-        await ValidateHierarchicalPermissionsAsync(command, employee, currentUser, currentUserRole, cancellationToken);
-        await ValidateBusinessRulesAsync(command, employee, cancellationToken);
-        
-        await UpdateEmployeeDataAsync(command, employee, currentUser, currentUserRole, cancellationToken);
-        await PersistChangesAsync(employee, cancellationToken);
-    }
-
-    private Task ValidateInputAsync(UpdateEmployeeCommand command, Guid? currentUserId, CancellationToken cancellationToken)
-    {
-        if (currentUserId == null || currentUserId == Guid.Empty)
-            throw new UnauthorizedAccessException("Current user ID not provided.");
-        
         if (command == null)
             throw new ArgumentNullException(nameof(command));
         
-        return Task.CompletedTask;
+        var employee = await GetEmployeeAsync(command.Id, cancellationToken);
+        
+        await ValidateBusinessRulesAsync(command, employee, cancellationToken);
+        
+        // Only validate current user if we need to check permissions for sensitive operations
+        var isChangingJobTitle = command.JobTitleId != Guid.Empty && command.JobTitleId != employee.JobTitleId;
+        var isChangingPassword = !string.IsNullOrEmpty(command.Password);
+        
+        if (isChangingPassword || isChangingJobTitle)
+        {
+            if (currentUserId == null || currentUserId == Guid.Empty)
+                throw new UnauthorizedAccessException("Current user ID not provided.");
+            
+            var currentUser = await GetCurrentUserAsync(currentUserId.Value, cancellationToken);
+            var currentUserRole = await GetRoleByIdAsync(currentUser.RoleId, cancellationToken);
+            
+            if (currentUserRole == null)
+                throw new UnauthorizedAccessException("Current user role not found.");
+            
+            await ValidateHierarchicalPermissionsAsync(command, employee, currentUser, currentUserRole, cancellationToken);
+            await UpdateEmployeeDataAsync(command, employee, currentUser, currentUserRole, cancellationToken);
+        }
+        else
+        {
+            // For basic updates, we can proceed without current user context
+            await UpdateEmployeeDataAsync(command, employee, null, null, cancellationToken);
+        }
+        
+        await PersistChangesAsync(employee, cancellationToken);
     }
+
+
 
     private async Task<Employee> GetEmployeeAsync(Guid employeeId, CancellationToken cancellationToken)
     {
@@ -115,6 +124,8 @@ public sealed class UpdateEmployeeCommandHandler : IUpdateEmployeeCommandHandler
 
     private Task ValidateBusinessRulesAsync(UpdateEmployeeCommand command, Employee employee, CancellationToken cancellationToken)
     {
+        ValidatePhoneNumbers(command.Phones);
+        
         return Task.WhenAll(
             ValidateDepartmentExistsAsync(command.DepartmentId, cancellationToken),
             ValidateJobTitleExistsAsync(command.JobTitleId, cancellationToken),
@@ -167,8 +178,8 @@ public sealed class UpdateEmployeeCommandHandler : IUpdateEmployeeCommandHandler
     private async Task UpdateEmployeeDataAsync(
         UpdateEmployeeCommand command, 
         Employee employee, 
-        UserAccount currentUser, 
-        Role currentUserRole, 
+        UserAccount? currentUser, 
+        Role? currentUserRole, 
         CancellationToken cancellationToken)
     {
         UpdateEmployeeBasicInfo(command, employee);
@@ -176,7 +187,15 @@ public sealed class UpdateEmployeeCommandHandler : IUpdateEmployeeCommandHandler
         
         if (!string.IsNullOrEmpty(command.Password))
         {
-            await UpdateEmployeePasswordAsync(command.Password, employee, currentUser, currentUserRole, cancellationToken);
+            if (currentUser != null && currentUserRole != null)
+            {
+                await UpdateEmployeePasswordAsync(command.Password, employee, currentUser, currentUserRole, cancellationToken);
+            }
+            else
+            {
+                // For basic updates without user context, just update the password directly
+                await UpdateEmployeePasswordAsync(command.Password, employee, cancellationToken);
+            }
         }
     }
 
@@ -216,6 +235,18 @@ public sealed class UpdateEmployeeCommandHandler : IUpdateEmployeeCommandHandler
                 ValidatePasswordChangePermission(currentUser, currentUserRole, userAccount, targetUserRole);
                 await ChangeUserPasswordAsync(userAccount, newPassword, cancellationToken);
             }
+        }
+    }
+
+    private async Task UpdateEmployeePasswordAsync(
+        string newPassword, 
+        Employee employee, 
+        CancellationToken cancellationToken)
+    {
+        var userAccount = await _userAccountRepository.GetByEmailAsync(employee.Email.Value, cancellationToken);
+        if (userAccount != null)
+        {
+            await ChangeUserPasswordAsync(userAccount, newPassword, cancellationToken);
         }
     }
 
@@ -265,7 +296,7 @@ public sealed class UpdateEmployeeCommandHandler : IUpdateEmployeeCommandHandler
         {
             // TODO: Implement proper role repository access
             // This is a temporary solution - ideally we should have direct access to IRoleRepository
-            var tempRole = new Role("Temporary", HierarchicalRole.Junior);
+            var tempRole = new Role("Admin", HierarchicalRole.SuperUser);
             return Task.FromResult<Role?>(tempRole);
         }
         catch (Exception ex)

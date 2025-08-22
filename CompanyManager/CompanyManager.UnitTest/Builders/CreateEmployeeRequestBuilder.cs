@@ -1,4 +1,4 @@
-﻿using CompanyManager.Application.DTOs;
+using CompanyManager.Application.DTOs;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,10 +23,10 @@ namespace CompanyManager.UnitTest.Builders
         {
             _req = new CreateEmployeeRequest
             {
-                FirstName = "João",
+                FirstName = "Jo�o",
                 LastName = "Silva",
                 Email = "joao.silva@empresa.com",
-                DocumentNumber = "12345678901",
+                DocumentNumber = "52998224725",
                 DateOfBirth = "1990-01-01",
                 PhoneNumbers = new List<string> { "+5511999999999" },
                 JobTitleId = Guid.NewGuid(),

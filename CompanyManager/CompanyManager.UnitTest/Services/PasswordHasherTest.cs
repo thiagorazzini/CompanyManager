@@ -154,7 +154,7 @@ namespace CompanyManager.UnitTest.Services
         [Fact(DisplayName = "Should handle numeric password correctly")]
         public void Should_Handle_Numeric_Password_Correctly()
         {
-            var numericPassword = "12345678901234567890";
+            var numericPassword = "52998224725234567890";
 
             var hashedPassword = _passwordHasher.Hash(numericPassword);
             var verificationResult = _passwordHasher.Verify(numericPassword, hashedPassword);

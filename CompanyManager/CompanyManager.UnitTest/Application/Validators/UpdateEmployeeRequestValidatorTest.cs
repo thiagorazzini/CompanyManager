@@ -1,4 +1,4 @@
-Ôªøusing CompanyManager.Application.DTOs;
+using CompanyManager.Application.DTOs;
 using CompanyManager.Application.Validators;
 using FluentAssertions;
 
@@ -16,7 +16,7 @@ namespace CompanyManager.UnitTest.Application.Validators
                 FirstName = "Jane",
                 LastName = "Doe",
                 Email = "jane.doe@company.com",
-                DocumentNumber = "52998224725", // CPF v√°lido
+                DocumentNumber = "52998224725", // CPF v·lido
                 PhoneNumbers = new List<string> { "11 99999-9999" },
                 JobTitleId = Guid.NewGuid(),
                 DepartmentId = Guid.NewGuid()
@@ -110,7 +110,7 @@ namespace CompanyManager.UnitTest.Application.Validators
 
         [Theory(DisplayName = "Should reject invalid CPF (length, repeated digits, wrong check digits)")]
         [InlineData("123")]
-        [InlineData("123456789012")]
+        [InlineData("529982247252")]
         [InlineData("00000000000")]
         [InlineData("11111111111")]
         [InlineData("12345678900")]
@@ -143,7 +143,7 @@ namespace CompanyManager.UnitTest.Application.Validators
         [Theory(DisplayName = "Should reject invalid phone numbers (BR)")]
         [InlineData("abc")]
         [InlineData("+55 +55 11 99999-9999")]
-        [InlineData("11 89999-9999")] // mobile deve come√ßar com 9
+        [InlineData("11 89999-9999")] // mobile deve comeÁar com 9
         public void Should_Reject_Invalid_Phones(string phone)
         {
             var req = Valid();
@@ -157,11 +157,11 @@ namespace CompanyManager.UnitTest.Application.Validators
         }
 
         [Theory(DisplayName = "Should accept valid phone numbers (BR)")]
-        [InlineData("11 99999-9999")] // celular v√°lido
-        [InlineData("(11) 99999-9999")] // celular com par√™nteses
-        [InlineData("11 8888-8888")] // fixo v√°lido (10 d√≠gitos)
-        [InlineData("11 7777-7777")] // fixo v√°lido (10 d√≠gitos)
-        [InlineData("+55 11 99999-9999")] // com c√≥digo do pa√≠s
+        [InlineData("11 99999-9999")] // celular v·lido
+        [InlineData("(11) 99999-9999")] // celular com parÍnteses
+        [InlineData("11 8888-8888")] // fixo v·lido (10 dÌgitos)
+        [InlineData("11 7777-7777")] // fixo v·lido (10 dÌgitos)
+        [InlineData("+55 11 99999-9999")] // com cÛdigo do paÌs
         public void Should_Accept_Valid_Phones(string phone)
         {
             var req = Valid();

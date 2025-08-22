@@ -1,4 +1,4 @@
-﻿namespace CompanyManager.Application.Commands
+namespace CompanyManager.Application.Commands
 {
     public sealed class DeleteEmployeeCommand
     {

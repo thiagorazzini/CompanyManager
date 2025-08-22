@@ -1,4 +1,4 @@
-Ôªøusing System;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
@@ -114,10 +114,10 @@ namespace CompanyManager.UnitTest.Application.Handlers
 
         [Theory(DisplayName = "Should reject invalid requests during validation")]
         [InlineData("", "ValidPass123!", "NewStrongPass456!", "NewStrongPass456!")] // email vazio
-        [InlineData("invalid-email", "ValidPass123!", "NewStrongPass456!", "NewStrongPass456!")] // email inv√°lido
+        [InlineData("invalid-email", "ValidPass123!", "NewStrongPass456!", "NewStrongPass456!")] // email inv·lido
         [InlineData("john@acme.com", "", "NewStrongPass456!", "NewStrongPass456!")] // senha atual vazia
         [InlineData("john@acme.com", "ValidPass123!", "weak", "weak")] // nova senha fraca
-        [InlineData("john@acme.com", "ValidPass123!", "NewStrongPass456!", "DifferentPass789!")] // confirma√ß√£o n√£o confere
+        [InlineData("john@acme.com", "ValidPass123!", "NewStrongPass456!", "DifferentPass789!")] // confirmaÁ„o n„o confere
         public async Task Should_Reject_Invalid_Requests_During_Validation(
             string email, string currentPassword, string newPassword, string confirmPassword)
         {

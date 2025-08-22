@@ -1,4 +1,4 @@
-ï»¿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -19,7 +19,7 @@ namespace CompanyManager.UnitTest.Application.TestDouble
             _existing = new HashSet<Guid>();
         }
 
-        // Mantido para cenÃ¡rios onde vocÃª sÃ³ quer simular existÃªncia
+        // Mantido para cenários onde você só quer simular existência
         public InMemoryDepartmentRepository(IEnumerable<Guid> existingDepartments)
         {
             _existing = new HashSet<Guid>(existingDepartments);
@@ -34,7 +34,7 @@ namespace CompanyManager.UnitTest.Application.TestDouble
         public Task AddAsync(Department department, CancellationToken ct)
         {
             _store[department.Id] = department;
-            _existing.Add(department.Id); // garante que ExistsAsync funcione tambÃ©m por este set
+            _existing.Add(department.Id); // garante que ExistsAsync funcione também por este set
             return Task.CompletedTask;
         }
 
@@ -72,7 +72,7 @@ namespace CompanyManager.UnitTest.Application.TestDouble
             return Task.FromResult(((IReadOnlyList<Department>)items, total));
         }
 
-        // MÃ©todos faltantes da interface
+        // Métodos faltantes da interface
         public Task<Department?> GetByNameAsync(string name, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(_store.Values.FirstOrDefault(d => d.Name == name));
@@ -115,7 +115,7 @@ namespace CompanyManager.UnitTest.Application.TestDouble
 
         public Task<int> GetEmployeeCountAsync(Guid departmentId, CancellationToken cancellationToken = default)
         {
-            // Simular contagem de funcionÃ¡rios - em testes reais isso seria calculado
+            // Simular contagem de funcionários - em testes reais isso seria calculado
             return Task.FromResult(0);
         }
 
@@ -126,7 +126,7 @@ namespace CompanyManager.UnitTest.Application.TestDouble
 
         public Task<IEnumerable<Department>> GetDepartmentsWithEmployeeCountAsync(CancellationToken cancellationToken = default)
         {
-            // Simular retorno com contagem de funcionÃ¡rios
+            // Simular retorno com contagem de funcionários
             return Task.FromResult(_store.Values.AsEnumerable());
         }
     }

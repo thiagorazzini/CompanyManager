@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -60,7 +60,7 @@ namespace CompanyManager.UnitTest.Application.Handlers
         [InlineData("")]
         [InlineData(" ")]
         [InlineData(" \t ")]
-        [InlineData("A")] // mínimo 2
+        [InlineData("A")] // m�nimo 2
         public async Task Should_Reject_Invalid_Names(string name)
         {
             var repo = new InMemoryDepartmentRepository();

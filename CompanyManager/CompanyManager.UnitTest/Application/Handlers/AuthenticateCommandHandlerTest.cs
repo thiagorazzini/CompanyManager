@@ -1,4 +1,4 @@
-﻿using CompanyManager.Application.Commands;
+using CompanyManager.Application.Commands;
 using CompanyManager.Application.DTOs;
 using CompanyManager.Application.Handlers;
 using CompanyManager.Application.Services;

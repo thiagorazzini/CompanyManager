@@ -1,4 +1,4 @@
-﻿using CompanyManager.Domain.Common;
+using CompanyManager.Domain.Common;
 using CompanyManager.Domain.Entities;
 using CompanyManager.Domain.Interfaces;
 
@@ -77,7 +77,7 @@ namespace CompanyManager.UnitTest.Application.TestDouble
             return Task.FromResult(TakenCpfs.Contains(cpfDigitsOnly));
         }
 
-        // Métodos faltantes da interface
+        // M�todos faltantes da interface
         public Task<Employee?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(_store.Values.FirstOrDefault(e => e.Email.Value == email));

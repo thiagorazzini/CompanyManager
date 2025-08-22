@@ -1,4 +1,4 @@
-﻿using CompanyManager.Domain.Interfaces;
+using CompanyManager.Domain.Interfaces;
 using CompanyManager.Domain.Common;
 using CompanyManager.Domain.Entities;
 using System;
@@ -37,7 +37,7 @@ namespace CompanyManager.UnitTest.Application.TestDouble
             DepartmentFilter filter, PageRequest page, CancellationToken ct)
             => Task.FromResult(((IReadOnlyList<Department>)Array.Empty<Department>(), 0));
 
-        // Métodos faltantes da interface
+        // M�todos faltantes da interface
         public Task<Department?> GetByNameAsync(string name, CancellationToken cancellationToken = default)
         {
             return Task.FromResult<Department?>(null);

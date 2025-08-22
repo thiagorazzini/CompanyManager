@@ -17,7 +17,7 @@ namespace CompanyManager.UnitTest.Entities
             string firstName = "John",
             string lastName = "Doe",
             string email = "john.doe@company.com",
-            string documentNumber = "12345678901",
+            string documentNumber = "52998224725",
             DateTime? dateOfBirth = null,
             string[] phones = null!)
         {
@@ -48,12 +48,12 @@ namespace CompanyManager.UnitTest.Entities
             emp.FirstName.Should().Be("John");
             emp.LastName.Should().Be("Doe");
             emp.Email.Value.Should().Be("john.doe@company.com");
-            emp.DocumentNumber.Raw.Should().Be("12345678901");
+            emp.DocumentNumber.Raw.Should().Be("52998224725");
             emp.DateOfBirth.BirthDate.Should().Be(new DateTime(1990, 1, 1));
             emp.Phones.Should().HaveCount(1);
             emp.Phones.First().PhoneNumber.E164.Should().Be("+5511999999999");
-            emp.JobTitleId.Should().Be(Guid.NewGuid());
-            emp.DepartmentId.Should().Be(Guid.NewGuid());
+            emp.JobTitleId.Should().NotBe(Guid.Empty);
+            emp.DepartmentId.Should().NotBe(Guid.Empty);
             emp.HasManager.Should().BeFalse();
             emp.HierarchyLevel.Should().Be(0);
         }

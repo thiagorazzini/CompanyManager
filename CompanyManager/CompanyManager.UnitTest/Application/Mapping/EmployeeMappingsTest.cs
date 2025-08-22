@@ -17,7 +17,7 @@ namespace CompanyManager.UnitTest.Application.Mapping
                 LastName = "  Doe  ",
                 JobTitleId = Guid.NewGuid(),
                 Email = "  JOHN.DOE@ACME.COM  ",
-                DocumentNumber = "  12345678901  ",
+                DocumentNumber = "  52998224725  ",
                 PhoneNumbers = new List<string> { "  (11) 99999-9999  ", null!, "", "  (11) 88888-8888  " },
                 DateOfBirth = "  1990-05-15  ",
                 Password = "Password123!",
@@ -39,7 +39,7 @@ namespace CompanyManager.UnitTest.Application.Mapping
             normalizedLastName.Should().Be("Doe");
             normalizedJobTitleId.Should().NotBe(Guid.Empty);
             normalizedEmail.Should().Be("john.doe@acme.com");
-            normalizedDocumentNumber.Should().Be("12345678901");
+            normalizedDocumentNumber.Should().Be("52998224725");
             normalizedPhones.Should().BeEquivalentTo(new[] { "(11) 99999-9999", "(11) 88888-8888" });
             normalizedDateOfBirth.Should().Be("1990-05-15");
         }

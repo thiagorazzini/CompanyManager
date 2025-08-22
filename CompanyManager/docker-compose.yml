@@ -1,50 +1,42 @@
-version: "3.9"
+version: '3.8'
 
 services:
-  # Banco de Dados SQL Server
-  sqlserver:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+  # SQL Server Database
+  sql:
     container_name: companymanager-sql
+    image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
       - ACCEPT_EULA=Y
-      - MSSQL_SA_PASSWORD=Senha@1234A!
-      - MSSQL_PID=Express
-      - MSSQL_TCP_PORT=1433
-      - MSSQL_AGENT_ENABLED=false
-      - MSSQL_LCID=1033
-      - MSSQL_COLLATION=SQL_Latin1_General_CP1_CI_AS
+      - SA_PASSWORD=Senha@1234A!
+      - MSSQL_PID=Developer
     ports:
       - "1433:1433"
     volumes:
-      - mssql_data:/var/opt/mssql
-      - ./sql-scripts:/docker-entrypoint-initdb.d
-    healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P $$MSSQL_SA_PASSWORD -C -Q 'SELECT 1' || exit 1"]
-      interval: 15s
-      timeout: 10s
-      retries: 10
-      start_period: 60s
+      - sql_data:/var/opt/mssql
     networks:
       - companymanager-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P Senha@1234A! -Q 'SELECT 1' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
-  # Backend .NET 8
-  backend:
+  # Backend API
+  api:
+    container_name: companymanager-api
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: companymanager-api
-    ports:
-      - "8080:8080"
+      dockerfile: CompanyManager.API/Dockerfile
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://+:8080
-      - ConnectionStrings__DefaultConnection=Server=companymanager-sql;Database=CompanyManager;User Id=sa;Password=Senha@1234A!;TrustServerCertificate=true;Encrypt=false;MultipleActiveResultSets=true;Connection Timeout=30
-      - JWT__SecretKey=your-super-secret-key-here-minimum-32-characters
-      - JWT__Issuer=CompanyManager.Dev
-      - JWT__Audience=CompanyManager.Web.Dev
-      - JWT__ExpirationHours=24
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Server=sql;Database=CompanyManager;User Id=sa;Password=Senha@1234A!;TrustServerCertificate=true;Encrypt=false;MultipleActiveResultSets=true;Connection Timeout=30
+    ports:
+      - "5000:80"
     depends_on:
-      sqlserver:
+      sql:
         condition: service_healthy
     networks:
       - companymanager-network
@@ -52,36 +44,32 @@ services:
 
   # Frontend React
   frontend:
+    container_name: companymanager-frontend
     build:
       context: ../CompanyManager.Frontend
       dockerfile: Dockerfile
-    container_name: companymanager-frontend
     ports:
       - "3000:80"
-    volumes:
-      - ../CompanyManager.Frontend:/app
-      - /app/node_modules
+    depends_on:
+      - api
     networks:
       - companymanager-network
     restart: unless-stopped
 
-  # Adminer (opcional - para gerenciar banco)
+  # Adminer para gerenciar o banco
   adminer:
-    image: adminer:latest
     container_name: companymanager-adminer
+    image: adminer:latest
     ports:
-      - "8082:8080"
-    environment:
-      - ADMINER_DEFAULT_SERVER=sqlserver
+      - "8080:8080"
     depends_on:
-      - sqlserver
+      - sql
     networks:
       - companymanager-network
     restart: unless-stopped
 
 volumes:
-  mssql_data:
-    driver: local
+  sql_data:
 
 networks:
   companymanager-network:

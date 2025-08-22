@@ -1,4 +1,4 @@
-﻿using CompanyManager.Domain.Entities;
+using CompanyManager.Domain.Entities;
 using FluentAssertions;
 using System;
 using System.Collections.Generic;

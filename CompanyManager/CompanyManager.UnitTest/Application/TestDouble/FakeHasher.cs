@@ -1,4 +1,4 @@
-﻿using CompanyManager.Domain.Interfaces;
+using CompanyManager.Domain.Interfaces;
 
 namespace CompanyManager.UnitTest.Application.TestDouble
 {

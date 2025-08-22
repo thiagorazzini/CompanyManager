@@ -43,9 +43,9 @@ namespace CompanyManager.UnitTest.Application.Handlers
                 LastName = "Doe",
                 Email = email,
                 DocumentNumber = cpf,
-                JobTitleId = Guid.NewGuid(),
+                JobTitleId = Guid.Empty, // Don't change job title
                 DepartmentId = deptId,
-                Phones = phones.Length > 0 ? phones.ToList() : new List<string> { "11 92222-2222" }
+                Phones = phones.ToList()
             };
         }
 
@@ -322,6 +322,15 @@ namespace CompanyManager.UnitTest.Application.Handlers
             var employees = new ProbingEmployeeRepository(employee);
             var departments = new StubDepartmentRepository(new[] { deptId });
             var userAccounts = new InMemoryUserAccountRepository();
+            
+            // Add a current user with admin role for password changes
+            var currentUserId = Guid.NewGuid();
+            var adminRoleId = Guid.NewGuid();
+            var currentUser = UserAccount.Create("admin@test.com", "hash", Guid.NewGuid(), adminRoleId, Guid.NewGuid());
+            // Manually set the Id property for the in-memory repository
+            typeof(UserAccount).GetProperty("Id")?.SetValue(currentUser, currentUserId);
+            await userAccounts.AddAsync(currentUser, CancellationToken.None);
+            
             var handler = new UpdateEmployeeCommandHandler(
                 employees,                              // IEmployeeRepository
                 userAccounts,                           // IUserAccountRepository  
@@ -333,7 +342,7 @@ namespace CompanyManager.UnitTest.Application.Handlers
             var cmd = MakeCommand(employee.Id, deptId, "jane.doe@company.com", "52998224725", "11 99999-9999");
             cmd.Password = "NewPassword123!";
 
-            await handler.Handle(cmd, CancellationToken.None);
+            await handler.Handle(cmd, CancellationToken.None, currentUserId);
 
             // Verificar se a senha foi atualizada
             var updatedEmployee = await employees.GetByIdAsync(employee.Id, default);

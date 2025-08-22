@@ -27,7 +27,12 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:3000", "http://localhost:4173")
+        policy.WithOrigins(
+                "http://localhost:3000",     // Frontend externo
+                "http://localhost:4173",     // Vite preview
+                "http://companymanager-frontend", // Frontend container
+                "http://frontend"            // Frontend service name
+              )
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -165,5 +170,10 @@ app.MapHealthChecks("/health", new HealthCheckOptions
 {
     ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
 });
+
+// Configurar URLs para Docker
+var urls = Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "http://+:80";
+app.Urls.Clear();
+app.Urls.Add(urls);
 
 app.Run();

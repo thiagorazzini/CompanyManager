@@ -1,4 +1,4 @@
-﻿using CompanyManager.Application.Abstractions;
+using CompanyManager.Application.Abstractions;
 using CompanyManager.Domain.Interfaces;
 using CompanyManager.Domain.Entities;
 using System;

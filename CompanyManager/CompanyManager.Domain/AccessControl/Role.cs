@@ -1,4 +1,4 @@
-Ôªøusing CompanyManager.Domain.Common;
+using CompanyManager.Domain.Common;
 
 namespace CompanyManager.Domain.AccessControl
 {
@@ -18,7 +18,7 @@ namespace CompanyManager.Domain.AccessControl
             Name = name.Trim();
             Level = level;
             
-            // Se n√£o foram fornecidas permiss√µes, usar as padr√£o do n√≠vel
+            // Se n„o foram fornecidas permissıes, usar as padr„o do nÌvel
             var permissions = perms ?? level.GetDefaultPermissions();
             foreach (var p in permissions) AddPermission(p);
         }
@@ -51,7 +51,7 @@ namespace CompanyManager.Domain.AccessControl
         }
 
         /// <summary>
-        /// Verifica se este role √© SuperUser
+        /// Verifica se este role È SuperUser
         /// </summary>
         /// <returns>True se for SuperUser</returns>
         public bool IsSuperUser()
@@ -60,15 +60,15 @@ namespace CompanyManager.Domain.AccessControl
         }
 
         /// <summary>
-        /// Verifica se este role tem uma permiss√£o espec√≠fica
-        /// SuperUser tem todas as permiss√µes
+        /// Verifica se este role tem uma permiss„o especÌfica
+        /// SuperUser tem todas as permissıes
         /// </summary>
-        /// <param name="permission">Permiss√£o a verificar</param>
-        /// <returns>True se tiver a permiss√£o</returns>
+        /// <param name="permission">Permiss„o a verificar</param>
+        /// <returns>True se tiver a permiss„o</returns>
         public bool HasPermission(string permission)
         {
             if (IsSuperUser())
-                return true; // SuperUser tem todas as permiss√µes
+                return true; // SuperUser tem todas as permissıes
                 
             return _permissions.Contains(permission, StringComparer.OrdinalIgnoreCase);
         }

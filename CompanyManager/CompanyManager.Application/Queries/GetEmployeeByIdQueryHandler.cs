@@ -1,4 +1,4 @@
-﻿using CompanyManager.Application.Abstractions;
+using CompanyManager.Application.Abstractions;
 using CompanyManager.Application.DTOs;
 using CompanyManager.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
@@ -54,7 +54,7 @@ public sealed class GetEmployeeByIdQueryHandler : IGetEmployeeByIdQueryHandler
             JobTitleName = employee.JobTitle?.Name ?? string.Empty,
             DepartmentId = employee.DepartmentId,
             DepartmentName = department?.Name ?? string.Empty,
-            Roles = new List<string>(), // Roles serão preenchidas pelo controller
+            Roles = new List<string>(), // Roles ser�o preenchidas pelo controller
             CreatedAt = employee.CreatedAt,
             UpdatedAt = employee.UpdatedAt
         };

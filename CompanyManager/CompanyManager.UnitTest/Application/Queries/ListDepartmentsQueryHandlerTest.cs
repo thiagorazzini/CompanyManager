@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -62,7 +62,7 @@ namespace CompanyManager.UnitTest.Application.Queries
             var request = new ListDepartmentsRequest { Page = 3, PageSize = 2 };
             var result = await handler.Handle(request, CancellationToken.None);
 
-            result.Items.Should().HaveCount(1); // 5 itens, pageSize 2 → pág 3 tem 1
+            result.Items.Should().HaveCount(1); // 5 itens, pageSize 2 ? p�g 3 tem 1
             result.Total.Should().Be(5);
             result.HasNext.Should().BeFalse();
             result.HasPrev.Should().BeTrue();

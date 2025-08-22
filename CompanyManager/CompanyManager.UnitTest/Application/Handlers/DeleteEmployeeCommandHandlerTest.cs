@@ -1,4 +1,4 @@
-Ôªøusing CompanyManager.Application.Commands;
+using CompanyManager.Application.Commands;
 using CompanyManager.Application.Handlers;
 using CompanyManager.Domain.Entities;
 using CompanyManager.Domain.ValueObjects;
@@ -52,7 +52,7 @@ namespace CompanyManager.UnitTest.Application.Handlers
 
             var cmd = new DeleteEmployeeCommand { Id = Guid.NewGuid() };
 
-            // n√£o deve lan√ßar
+            // n„o deve lanÁar
             await handler.Handle(cmd, CancellationToken.None);
         }
     }

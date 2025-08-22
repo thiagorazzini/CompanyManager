@@ -1,4 +1,4 @@
-﻿using CompanyManager.Domain.Common;
+using CompanyManager.Domain.Common;
 using CompanyManager.Domain.Entities;
 using CompanyManager.Domain.Interfaces;
 using CompanyManager.Application.DTOs;

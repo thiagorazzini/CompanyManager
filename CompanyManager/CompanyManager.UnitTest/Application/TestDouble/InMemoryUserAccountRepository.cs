@@ -1,4 +1,4 @@
-Ôªøusing CompanyManager.Domain.Entities;
+using CompanyManager.Domain.Entities;
 using CompanyManager.Domain.Interfaces;
 using CompanyManager.Domain.AccessControl;
 using System;
@@ -94,7 +94,7 @@ namespace CompanyManager.UnitTest.Application.TestDouble
             return Task.FromResult(users.AsEnumerable());
         }
 
-        // M√©todos de verifica√ß√£o de exist√™ncia
+        // MÈtodos de verificaÁ„o de existÍncia
         public Task<bool> ExistsAsync(Guid id, CancellationToken ct)
         {
             return Task.FromResult(_byId.ContainsKey(id));
@@ -105,7 +105,7 @@ namespace CompanyManager.UnitTest.Application.TestDouble
             return Task.FromResult(_byEmail.ContainsKey(Key(email)));
         }
 
-        // M√©todos de CRUD
+        // MÈtodos de CRUD
         public Task AddAsync(UserAccount account, CancellationToken ct)
         {
             _byId[account.Id] = account;
@@ -143,7 +143,7 @@ namespace CompanyManager.UnitTest.Application.TestDouble
             return Task.CompletedTask;
         }
 
-        // M√©todos de gerenciamento de conta
+        // MÈtodos de gerenciamento de conta
         public Task<bool> IsLockedOutAsync(Guid id, CancellationToken ct)
         {
             var user = _byId.TryGetValue(id, out var u) ? u : null;
@@ -198,7 +198,7 @@ namespace CompanyManager.UnitTest.Application.TestDouble
             return Task.FromResult(user?.RoleId ?? Guid.Empty);
         }
 
-        // M√©todos de valida√ß√£o de permiss√µes
+        // MÈtodos de validaÁ„o de permissıes
         public Task<bool> HasPermissionAsync(Guid userId, string permission, CancellationToken ct)
         {
             var user = _byId.TryGetValue(userId, out var u) ? u : null;
@@ -206,7 +206,7 @@ namespace CompanyManager.UnitTest.Application.TestDouble
 
             if (!_roles.TryGetValue(user.RoleId, out var role)) return Task.FromResult(false);
 
-            // SuperUser tem todas as permiss√µes
+            // SuperUser tem todas as permissıes
             if (role.IsSuperUser()) return Task.FromResult(true);
 
             return Task.FromResult(role.HasPermission(permission));
@@ -219,7 +219,7 @@ namespace CompanyManager.UnitTest.Application.TestDouble
 
             if (!_roles.TryGetValue(user.RoleId, out var role)) return Task.FromResult(Enumerable.Empty<string>());
 
-            // SuperUser tem todas as permiss√µes
+            // SuperUser tem todas as permissıes
             if (role.IsSuperUser())
             {
                 var allPermissions = _roles.Values.SelectMany(r => r.Permissions).Distinct();
@@ -249,7 +249,7 @@ namespace CompanyManager.UnitTest.Application.TestDouble
             return Task.FromResult(role.Level);
         }
 
-        // M√©todos obsoletos - mantidos para compatibilidade tempor√°ria
+        // MÈtodos obsoletos - mantidos para compatibilidade tempor·ria
         public Task UpdateSecurityStampAsync(Guid id, Guid newSecurityStamp, CancellationToken ct)
         {
             if (_byId.TryGetValue(id, out var user))
@@ -306,7 +306,7 @@ namespace CompanyManager.UnitTest.Application.TestDouble
             return Task.CompletedTask;
         }
 
-        // M√©todos de consulta em lote
+        // MÈtodos de consulta em lote
         public Task<IEnumerable<UserAccount>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken ct)
         {
             if (ids == null || !ids.Any())
@@ -328,7 +328,7 @@ namespace CompanyManager.UnitTest.Application.TestDouble
 
         public Task<IEnumerable<UserAccount>> GetUsersByLastLoginDateAsync(DateTime fromDate, CancellationToken ct)
         {
-            // Como n√£o temos mais LastLoginAt, retornar usu√°rios ativos ordenados por data de cria√ß√£o
+            // Como n„o temos mais LastLoginAt, retornar usu·rios ativos ordenados por data de criaÁ„o
             var users = _byId.Values.Where(u => u.IsActive && u.CreatedAt >= fromDate)
                                    .OrderByDescending(u => u.CreatedAt);
             return Task.FromResult(users.AsEnumerable());

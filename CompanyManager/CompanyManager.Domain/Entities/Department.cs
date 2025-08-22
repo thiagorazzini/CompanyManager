@@ -1,4 +1,4 @@
-﻿using CompanyManager.Domain.Common;
+using CompanyManager.Domain.Common;
 
 namespace CompanyManager.Domain.Entities
 {

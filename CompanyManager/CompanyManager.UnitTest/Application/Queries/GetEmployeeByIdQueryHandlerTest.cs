@@ -1,4 +1,4 @@
-﻿using CompanyManager.Application.DTOs;
+using CompanyManager.Application.DTOs;
 using CompanyManager.Application.Queries;
 using CompanyManager.Domain.Entities;
 using CompanyManager.Domain.ValueObjects;

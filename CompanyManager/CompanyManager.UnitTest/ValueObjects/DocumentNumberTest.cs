@@ -83,7 +83,7 @@ namespace CompanyManager.UnitTest.ValueObjects
         [Theory(DisplayName = "Should throw for invalid formats (not a valid CPF)")]
         [InlineData("123")]
         [InlineData("123456789")]
-        [InlineData("123456789012345678901")]
+        [InlineData("529982247252345678901")]
         [InlineData("abc123def")]
         [InlineData("123-456-789")]
         [InlineData("123.456.789")]

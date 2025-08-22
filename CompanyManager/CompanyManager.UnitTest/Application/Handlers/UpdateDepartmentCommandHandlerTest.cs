@@ -1,4 +1,4 @@
-ï»¿using System;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
@@ -61,7 +61,7 @@ namespace CompanyManager.UnitTest.Application.Handlers
         [InlineData("")]
         [InlineData(" ")]
         [InlineData(" \t ")]
-        [InlineData("A")] // mÃ­nimo 2
+        [InlineData("A")] // mínimo 2
         public async Task Should_Reject_Invalid_Names(string newName)
         {
             var repo = new InMemoryDepartmentRepository();
@@ -87,7 +87,7 @@ namespace CompanyManager.UnitTest.Application.Handlers
             var handler = new UpdateDepartmentCommandHandler(repo, CreateValidator());
             var before = dept.UpdatedAt;
 
-            // mesmo nome (mesmo apÃ³s Trim)
+            // mesmo nome (mesmo após Trim)
             var cmd = new UpdateDepartmentCommand { Id = dept.Id, NewName = "  Data  " };
             await handler.Handle(cmd, CancellationToken.None);
 

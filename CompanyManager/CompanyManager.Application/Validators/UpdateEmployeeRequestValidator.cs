@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using CompanyManager.Application.DTOs;
 using CompanyManager.Domain.ValueObjects;
 using FluentValidation;
@@ -10,6 +10,15 @@ namespace CompanyManager.Application.Validators
     {
         public UpdateEmployeeRequestValidator()
         {
+            RuleFor(x => x.Id)
+                .NotEmpty().WithMessage("Employee ID is required.");
+
+            RuleFor(x => x.JobTitleId)
+                .Must(id => id != Guid.Empty).WithMessage("Job title ID is required.");
+
+            RuleFor(x => x.DepartmentId)
+                .Must(id => id != Guid.Empty).WithMessage("Department ID is required.");
+
             RuleFor(x => x.FirstName)
                 .Cascade(CascadeMode.Stop)
                 .NotEmpty().WithMessage("First name is required.")
@@ -38,14 +47,9 @@ namespace CompanyManager.Application.Validators
                 .Must(phones => phones != null && phones.All(IsValidBrPhone))
                 .WithMessage("Invalid phone number.");
 
-            RuleFor(x => x.JobTitleId)
-                .Must(id => id != Guid.Empty)
-                .WithMessage("Job title is required.");
 
-            RuleFor(x => x.DepartmentId)
-                .Must(id => id != Guid.Empty).WithMessage("DepartmentId is required.");
 
-            // RoleLevel removido - o nível é determinado pelo JobTitle.HierarchyLevel
+            // RoleLevel removido - o n�vel � determinado pelo JobTitle.HierarchyLevel
 
             RuleFor(x => x.Password)
                 .Must(password => string.IsNullOrEmpty(password) || password.Length >= 6)

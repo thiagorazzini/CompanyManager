@@ -1,4 +1,4 @@
-Ôªøusing CompanyManager.Domain.Interfaces;
+using CompanyManager.Domain.Interfaces;
 using CompanyManager.Domain.Common;
 using CompanyManager.Domain.Entities;
 using System;
@@ -106,7 +106,7 @@ namespace CompanyManager.UnitTest.Application.TestDouble
             return Task.FromResult(((IReadOnlyList<Employee>)items, total));
         }
 
-        // M√©todos faltantes da interface
+        // MÈtodos faltantes da interface
         public Task<Employee?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(_store.Values.FirstOrDefault(e => e.Email.Value == email));
@@ -129,19 +129,19 @@ namespace CompanyManager.UnitTest.Application.TestDouble
 
         public Task<IEnumerable<Employee>> GetByJobTitleAsync(string jobTitle, CancellationToken cancellationToken = default)
         {
-            // Este m√©todo agora busca por nome do JobTitle, n√£o por string direta
+            // Este mÈtodo agora busca por nome do JobTitle, n„o por string direta
             return Task.FromResult(_store.Values.Where(e => e.JobTitle?.Name.Contains(jobTitle ?? "") == true));
         }
 
         public Task<IEnumerable<Employee>> GetActiveEmployeesAsync(CancellationToken cancellationToken = default)
         {
-            // A entidade Employee n√£o tem campo IsActive - retornar todos
+            // A entidade Employee n„o tem campo IsActive - retornar todos
             return Task.FromResult(_store.Values.AsEnumerable());
         }
 
         public Task<IEnumerable<Employee>> GetInactiveEmployeesAsync(CancellationToken cancellationToken = default)
         {
-            // A entidade Employee n√£o tem campo IsActive - retornar vazio
+            // A entidade Employee n„o tem campo IsActive - retornar vazio
             return Task.FromResult(Enumerable.Empty<Employee>());
         }
 
@@ -172,7 +172,7 @@ namespace CompanyManager.UnitTest.Application.TestDouble
 
         public Task<int> GetActiveCountAsync(CancellationToken cancellationToken = default)
         {
-            // A entidade Employee n√£o tem campo IsActive - retornar total
+            // A entidade Employee n„o tem campo IsActive - retornar total
             return Task.FromResult(_store.Count);
         }
 

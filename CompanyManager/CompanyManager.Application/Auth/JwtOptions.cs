@@ -1,4 +1,4 @@
-﻿namespace CompanyManager.Application.Auth
+namespace CompanyManager.Application.Auth
 {
     public sealed class JwtOptions
     {

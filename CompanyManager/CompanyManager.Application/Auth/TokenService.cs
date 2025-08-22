@@ -1,4 +1,4 @@
-Ôªøusing CompanyManager.Application.Auth;
+using CompanyManager.Application.Auth;
 using CompanyManager.Application.Auth.Interfaces;
 using CompanyManager.Domain.Entities;
 using CompanyManager.Domain.Interfaces;
@@ -42,7 +42,7 @@ namespace CompanyManager.Application.Auth
                 new Claim("sstamp", user.SecurityStamp.ToString())
             };
 
-            // Adicionar permiss√µes do usu√°rio
+            // Adicionar permissıes do usu·rio
             var permissions = await _userRepository.GetAllPermissionsAsync(user.Id, cancellationToken);
             if (permissions != null)
             {
@@ -80,7 +80,6 @@ namespace CompanyManager.Application.Auth
                 new Claim("sstamp", user.SecurityStamp.ToString())
             };
 
-            // Adicionar claims extras se fornecidos
             if (extraClaims != null)
                 claims.AddRange(extraClaims);
 

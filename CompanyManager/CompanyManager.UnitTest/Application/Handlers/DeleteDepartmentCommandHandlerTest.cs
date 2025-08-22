@@ -1,4 +1,4 @@
-ï»¿using System;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
@@ -42,7 +42,7 @@ namespace CompanyManager.UnitTest.Application.Handlers
             var handler = new DeleteDepartmentCommandHandler(repo);
             var cmd = new DeleteDepartmentCommand { Id = Guid.NewGuid() };
 
-            // Act & Assert: nÃ£o deve lanÃ§ar
+            // Act & Assert: não deve lançar
             await handler.Handle(cmd, CancellationToken.None);
         }
 
@@ -56,8 +56,8 @@ namespace CompanyManager.UnitTest.Application.Handlers
             var handler = new DeleteDepartmentCommandHandler(repo);
             var cmd = new DeleteDepartmentCommand { Id = dept.Id };
 
-            await handler.Handle(cmd, CancellationToken.None); // 1Âª vez
-            await handler.Handle(cmd, CancellationToken.None); // 2Âª vez â€” idempotente
+            await handler.Handle(cmd, CancellationToken.None); // 1ª vez
+            await handler.Handle(cmd, CancellationToken.None); // 2ª vez — idempotente
 
             var after = await repo.GetByIdAsync(dept.Id, CancellationToken.None);
             after.Should().BeNull();

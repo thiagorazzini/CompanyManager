@@ -1,4 +1,4 @@
-﻿using CompanyManager.Application.Abstractions;
+using CompanyManager.Application.Abstractions;
 using CompanyManager.Application.Commands;
 using CompanyManager.Application.DTOs;
 using CompanyManager.Application.Auth;
