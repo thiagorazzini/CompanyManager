@@ -220,3 +220,34 @@ Below are screenshots confirming complete execution and validation of the system
 
 ---
 
+## 🖥️ Frontend Interface
+
+### 🔐 8. Login Screen
+![Login](.doc/front_login.png)
+
+### 🏠 9. Main Dashboard
+![Dashboard](.doc/front_dash.png)
+
+### 👤 10. User Creation via Frontend
+![Create User Frontend](.doc/create_user_front.png)
+
+### 🏢 11. Department Listing
+![List Departments](.doc/front_list_department.png)
+
+### ➕ 12. Department Creation
+![Create Department](.doc/front_create_department.png)
+
+### ✏️ 13. Department Editing
+![Edit Department](.doc/front_edit_department.png)
+
+### 👥 14. Employee Listing
+![List Employees](.doc/front_list_employee.png)
+
+### ➕ 15. Employee Creation
+![Create Employee](.doc/front_create_employee.png)
+
+### ✏️ 16. Employee Editing
+![Edit Employee](.doc/front_edit_employee.png)
+
+---
+
