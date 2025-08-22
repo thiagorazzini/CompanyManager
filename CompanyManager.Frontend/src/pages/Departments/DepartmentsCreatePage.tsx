@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@hooks/useAuth';
+
 import Button from '@components/ui/Button';
 import Input from '@components/ui/Input';
 import LoadingSpinner from '@components/LoadingSpinner';
+import UserHeader from '@components/layout/UserHeader';
 import departmentsService, { CreateDepartmentRequest } from '@services/departments/departmentsService';
 import toast from 'react-hot-toast';
 
 const DepartmentsCreatePage: React.FC = () => {
-    const { user, logout } = useAuth();
+
     const navigate = useNavigate();
     const [isLoading, setIsLoading] = useState(false);
     const [form, setForm] = useState<CreateDepartmentRequest>({
@@ -24,7 +25,7 @@ const DepartmentsCreatePage: React.FC = () => {
             newErrors.name = 'Nome é obrigatório';
         }
 
-        if (!form.description.trim()) {
+        if (!form.description?.trim()) {
             newErrors.description = 'Descrição é obrigatória';
         }
 
@@ -34,7 +35,7 @@ const DepartmentsCreatePage: React.FC = () => {
 
     const handleInputChange = (field: keyof CreateDepartmentRequest, value: string) => {
         setForm(prev => ({ ...prev, [field]: value }));
-        // Limpar erro do campo quando o usuário começar a digitar
+        // Clear field error when user starts typing
         if (errors[field]) {
             setErrors(prev => ({ ...prev, [field]: undefined }));
         }
@@ -53,7 +54,7 @@ const DepartmentsCreatePage: React.FC = () => {
             toast.success('Departamento criado com sucesso!');
             navigate('/departments');
         } catch (error) {
-            toast.error('Erro ao criar departamento');
+            toast.error('Error creating department');
         } finally {
             setIsLoading(false);
         }
@@ -63,42 +64,14 @@ const DepartmentsCreatePage: React.FC = () => {
         navigate('/departments');
     };
 
-    const handleLogout = () => {
-        logout();
-    };
+
 
     return (
         <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <div className="bg-white shadow-sm border-b border-gray-200">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center py-4">
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-900">Criar Departamento</h1>
-                            <p className="text-sm text-gray-600">
-                                Adicionar novo departamento à empresa
-                            </p>
-                        </div>
-                        <div className="flex items-center space-x-4">
-                            <div className="text-right">
-                                <p className="text-sm font-medium text-gray-900">
-                                    {user?.username || 'Usuário'}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                    {user?.email || 'email@exemplo.com'}
-                                </p>
-                            </div>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleLogout}
-                            >
-                                Sair
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <UserHeader
+                title="Create Department"
+                subtitle="Add new department to the company"
+            />
 
             {/* Main Content */}
             <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -107,14 +80,14 @@ const DepartmentsCreatePage: React.FC = () => {
                         {/* Nome */}
                         <div>
                             <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                                Nome do Departamento *
+                                Department Name *
                             </label>
                             <Input
                                 id="name"
                                 type="text"
                                 value={form.name}
                                 onChange={(value) => handleInputChange('name', value)}
-                                placeholder="Ex: Recursos Humanos"
+                                placeholder="Ex: Human Resources"
                                 error={errors.name}
                                 disabled={isLoading}
                             />
@@ -123,7 +96,7 @@ const DepartmentsCreatePage: React.FC = () => {
                         {/* Descrição */}
                         <div>
                             <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
-                                Descrição *
+                                Description *
                             </label>
                             <textarea
                                 id="description"
@@ -132,7 +105,7 @@ const DepartmentsCreatePage: React.FC = () => {
                                     } ${isLoading ? 'bg-gray-100' : 'bg-white'}`}
                                 value={form.description}
                                 onChange={(e) => handleInputChange('description', e.target.value)}
-                                placeholder="Descreva as responsabilidades e funções do departamento"
+                                placeholder="Describe the department's responsibilities and functions"
                                 disabled={isLoading}
                             />
                             {errors.description && (
@@ -150,7 +123,7 @@ const DepartmentsCreatePage: React.FC = () => {
                                     onClick={() => navigate('/departments')}
                                     disabled={isLoading}
                                 >
-                                    ← Voltar para Departamentos
+                                    ← Back to Departments
                                 </Button>
                                 <Button
                                     type="button"
@@ -170,7 +143,7 @@ const DepartmentsCreatePage: React.FC = () => {
                                     onClick={handleCancel}
                                     disabled={isLoading}
                                 >
-                                    Cancelar
+                                    Cancel
                                 </Button>
                                 <Button
                                     type="submit"
@@ -180,10 +153,10 @@ const DepartmentsCreatePage: React.FC = () => {
                                     {isLoading ? (
                                         <>
                                             <LoadingSpinner size="sm" className="mr-2" />
-                                            Criando...
+                                            Creating...
                                         </>
                                     ) : (
-                                        'Criar Departamento'
+                                        'Create Department'
                                     )}
                                 </Button>
                             </div>

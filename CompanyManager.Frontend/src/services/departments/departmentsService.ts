@@ -33,14 +33,9 @@ class DepartmentsService {
 
     async getDepartments(): Promise<Department[]> {
         try {
-            console.log('🌐 Fazendo requisição para:', this.baseUrl);
             const response = await httpClient.get<DepartmentListResponse>(this.baseUrl);
-            console.log('📡 Resposta recebida:', response);
-            console.log('📦 Dados extraídos:', response.data);
-            console.log('📋 Items extraídos:', response.data.items);
             return response.data.items;
         } catch (error) {
-            console.error('❌ Erro ao buscar departamentos:', error);
             throw new Error('Erro ao carregar departamentos');
         }
     }
@@ -50,7 +45,6 @@ class DepartmentsService {
             const response = await httpClient.get<Department>(`${this.baseUrl}/${id}`);
             return response.data;
         } catch (error) {
-            console.error('Erro ao buscar departamento:', error);
             throw new Error('Erro ao carregar departamento');
         }
     }
@@ -60,7 +54,6 @@ class DepartmentsService {
             const response = await httpClient.post<Department>(this.baseUrl, data);
             return response.data;
         } catch (error) {
-            console.error('Erro ao criar departamento:', error);
             throw new Error('Erro ao criar departamento');
         }
     }
@@ -70,7 +63,6 @@ class DepartmentsService {
             const response = await httpClient.put<Department>(`${this.baseUrl}/${id}`, data);
             return response.data;
         } catch (error) {
-            console.error('Erro ao atualizar departamento:', error);
             throw new Error('Erro ao atualizar departamento');
         }
     }
@@ -80,7 +72,6 @@ class DepartmentsService {
             await httpClient.delete(`${this.baseUrl}/${id}`);
             return { success: true };
         } catch (error) {
-            console.error('Erro ao remover departamento:', error);
             throw new Error('Erro ao remover departamento');
         }
     }

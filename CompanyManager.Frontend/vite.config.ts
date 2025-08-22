@@ -9,7 +9,7 @@ export default defineConfig({
         port: 3000,
     },
     define: {
-        'import.meta.env.VITE_API_BASE_URL': JSON.stringify('http://localhost:5173/api'),
+        'import.meta.env.VITE_API_BASE_URL': JSON.stringify('http://localhost:8080/api'),
     },
     resolve: {
         alias: {

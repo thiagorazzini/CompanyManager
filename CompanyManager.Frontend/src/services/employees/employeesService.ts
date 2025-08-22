@@ -73,14 +73,9 @@ class EmployeesService {
 
     async getEmployees(): Promise<Employee[]> {
         try {
-            console.log('🌐 Fazendo requisição para:', this.baseUrl);
             const response = await httpClient.get<EmployeeListResponse>(this.baseUrl);
-            console.log('📡 Resposta recebida:', response);
-            console.log('📦 Dados extraídos:', response.data);
-            console.log('📋 Items extraídos:', response.data.items);
             return response.data.items;
         } catch (error) {
-            console.error('❌ Erro ao buscar funcionários:', error);
             throw new Error('Erro ao carregar funcionários');
         }
     }
@@ -90,7 +85,6 @@ class EmployeesService {
             const response = await httpClient.get<EmployeeDetail>(`${this.baseUrl}/${id}`);
             return response.data;
         } catch (error) {
-            console.error('Erro ao buscar funcionário:', error);
             throw new Error('Erro ao carregar funcionário');
         }
     }
@@ -100,7 +94,6 @@ class EmployeesService {
             const response = await httpClient.post<Employee>(this.baseUrl, data);
             return response.data;
         } catch (error) {
-            console.error('Erro ao criar funcionário:', error);
             throw new Error('Erro ao criar funcionário');
         }
     }
@@ -110,7 +103,6 @@ class EmployeesService {
             const response = await httpClient.put<Employee>(`${this.baseUrl}/${id}`, data);
             return response.data;
         } catch (error) {
-            console.error('Erro ao atualizar funcionário:', error);
             throw new Error('Erro ao atualizar funcionário');
         }
     }
@@ -120,7 +112,6 @@ class EmployeesService {
             await httpClient.delete(`${this.baseUrl}/${id}`);
             return { success: true };
         } catch (error) {
-            console.error('Erro ao deletar funcionário:', error);
             throw new Error('Erro ao deletar funcionário');
         }
     }

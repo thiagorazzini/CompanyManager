@@ -11,7 +11,6 @@ interface LoginCredentials {
 interface AuthResponse {
     message: string;
     accessToken: string;
-    refreshToken?: string;
     expiresAt: string;
     tokenType: string;
     user?: {
@@ -22,9 +21,30 @@ interface AuthResponse {
     };
 }
 
+interface UserProfile {
+    id: string;
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    isActive: boolean;
+    lastLoginAt: string;
+    jobTitle?: {
+        id: string;
+        name: string;
+        hierarchyLevel: number;
+        description: string;
+    };
+    role?: {
+        id: string;
+        name: string;
+        level: string;
+    };
+}
+
 export const useAuth = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [user, setUser] = useState<AuthResponse['user'] | null>(null);
+    const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const navigate = useNavigate();
 
@@ -37,7 +57,23 @@ export const useAuth = () => {
         const token = localStorage.getItem('token');
         const hasValidToken = !!token && token !== 'undefined' && token !== 'null';
         setIsAuthenticated(hasValidToken);
+
+        // Se tem token válido, carregar profile
+        if (hasValidToken) {
+            loadUserProfile();
+        }
+
         return hasValidToken;
+    }, []);
+
+    const loadUserProfile = useCallback(async () => {
+        try {
+            const profile = await authService.getProfile();
+            setUserProfile(profile);
+        } catch (error) {
+            // Se falhar ao carregar profile, fazer logout
+            logout();
+        }
     }, []);
 
     const login = useCallback(async (credentials: LoginCredentials) => {
@@ -46,18 +82,27 @@ export const useAuth = () => {
 
             const response = await authService.login(credentials);
 
-            // Salvar tokens no localStorage
+            // Salvar token no localStorage
             localStorage.setItem('token', response.accessToken);
-            if (response.refreshToken) {
-                localStorage.setItem('refreshToken', response.refreshToken);
-            }
 
             // Atualizar estado do usuário
-            setUser(response.user || null);
+            if (response.user) {
+                setUser({
+                    id: response.user.id,
+                    email: response.user.email,
+                    firstName: response.user.firstName,
+                    lastName: response.user.lastName
+                });
+            } else {
+                setUser(null);
+            }
             setIsAuthenticated(true);
 
-            // Mostrar toast de sucesso
-            toast.success('Login realizado com sucesso!');
+            // Carregar profile completo do usuário
+            await loadUserProfile();
+
+            // Mostrar toast de sucesso usando mensagem do backend
+            toast.success(response.message || 'Login successful!');
 
             // Redirecionar para dashboard
             navigate('/dashboard');
@@ -86,15 +131,19 @@ export const useAuth = () => {
 
     const logout = useCallback(async () => {
         try {
-            await authService.logout();
+            const response = await authService.logout();
+
+            // Mostrar toast de sucesso usando mensagem do backend
+            toast.success(response.message || 'Logged out successfully');
         } catch (error) {
-            console.error('Erro ao fazer logout:', error);
+            // Erro no logout - continuar mesmo assim
+            toast.error('Error during logout');
         } finally {
             // Limpar estado local independente do sucesso da API
             setUser(null);
+            setUserProfile(null);
             setIsAuthenticated(false);
             localStorage.removeItem('token');
-            localStorage.removeItem('refreshToken');
             navigate('/login');
         }
     }, [navigate]);
@@ -114,6 +163,7 @@ export const useAuth = () => {
 
     return {
         user,
+        userProfile,
         isLoading,
         isAuthenticated,
         login,
@@ -121,5 +171,6 @@ export const useAuth = () => {
         checkAuth,
         getToken,
         hasValidToken,
+        loadUserProfile,
     };
 };

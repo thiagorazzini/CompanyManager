@@ -1,9 +1,11 @@
 ﻿using CompanyManager.Application.Auth;
 using CompanyManager.Application.Services;
 using CompanyManager.Domain.Entities;
+using CompanyManager.Domain.Interfaces;
 using FluentAssertions;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Moq;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 
@@ -50,7 +52,9 @@ namespace CompanyManager.UnitTest.Application.Services
             return UserAccount.Create(
                 userName: email.Trim().ToLowerInvariant(),
                 passwordHash: "x",
-                employeeId: Guid.NewGuid()
+                employeeId: Guid.NewGuid(),
+                roleId: Guid.NewGuid(),
+                jobTitleId: Guid.NewGuid()
             );
         }
 
@@ -58,7 +62,8 @@ namespace CompanyManager.UnitTest.Application.Services
         public void Should_Create_Jwt_With_Claims()
         {
             var opts = Options();
-            var svc = new TokenService(opts);
+            var mockUserRepo = new Mock<IUserAccountRepository>();
+            var svc = new TokenService(opts, mockUserRepo.Object);
 
             var user = NewUser("john.doe@acme.com");
             var token = svc.GenerateAccessToken(user);
@@ -83,7 +88,8 @@ namespace CompanyManager.UnitTest.Application.Services
         public void Should_Set_ExpiresAt()
         {
             var opts = Options(accessMinutes: 20, skewSeconds: 0);
-            var svc = new TokenService(opts);
+            var mockUserRepo = new Mock<IUserAccountRepository>();
+            var svc = new TokenService(opts, mockUserRepo.Object);
 
             var user = NewUser("alice@acme.com");
             var before = DateTime.UtcNow;
@@ -101,7 +107,8 @@ namespace CompanyManager.UnitTest.Application.Services
         public void Should_Reject_With_Wrong_Key()
         {
             var opts = Options(secret: "unit-test-access-secret-AAAAAAAAAAAAAAAAAAAAAA");
-            var svc = new TokenService(opts);
+            var mockUserRepo = new Mock<IUserAccountRepository>();
+            var svc = new TokenService(opts, mockUserRepo.Object);
 
             var user = NewUser("bob@acme.com");
             var token = svc.GenerateAccessToken(user);

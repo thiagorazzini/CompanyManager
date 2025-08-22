@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@hooks/useAuth';
+
 import Button from '@components/ui/Button';
 import LoadingSpinner from '@components/LoadingSpinner';
 import Table, { TableColumn } from '@components/ui/Table';
+import UserHeader from '@components/layout/UserHeader';
 import employeesService, { Employee } from '@services/employees/employeesService';
 import toast from 'react-hot-toast';
 
 const EmployeesListPage: React.FC = () => {
-    const { user, logout } = useAuth();
+
     const navigate = useNavigate();
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -39,30 +40,28 @@ const EmployeesListPage: React.FC = () => {
     };
 
     const handleDeleteEmployee = async (employee: Employee) => {
-        if (!window.confirm(`Tem certeza que deseja deletar ${employee.firstName} ${employee.lastName}?`)) {
+        if (!window.confirm(`Are you sure you want to delete ${employee.firstName} ${employee.lastName}?`)) {
             return;
         }
 
         try {
             setIsDeleting(employee.id);
             await employeesService.deleteEmployee(employee.id);
-            toast.success('Funcionário deletado com sucesso!');
+            toast.success('Employee deleted successfully!');
             await loadEmployees(); // Recarregar lista
         } catch (error) {
-            toast.error('Erro ao deletar funcionário');
+            toast.error('Error deleting employee');
         } finally {
             setIsDeleting(null);
         }
     };
 
-    const handleLogout = () => {
-        logout();
-    };
+
 
     const columns: TableColumn<Employee>[] = [
         {
             key: 'name',
-            header: 'Nome',
+            header: 'Name',
             render: (_, employee) => `${employee.firstName} ${employee.lastName}`,
         },
         {
@@ -71,17 +70,17 @@ const EmployeesListPage: React.FC = () => {
         },
         {
             key: 'jobTitle',
-            header: 'Cargo',
+            header: 'Job Title',
         },
         {
             key: 'departmentName',
-            header: 'Departamento',
-            render: (value) => value || 'Não atribuído',
+            header: 'Department',
+            render: (value) => value || 'Not assigned',
         },
         {
             key: 'createdAt',
-            header: 'Data de Criação',
-            render: (value) => new Date(value).toLocaleDateString('pt-BR'),
+            header: 'Creation Date',
+            render: (value) => new Date(value).toLocaleDateString('en-US'),
         },
     ];
 
@@ -97,42 +96,38 @@ const EmployeesListPage: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <div className="bg-white shadow-sm border-b border-gray-200">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center py-4">
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-900">Funcionários</h1>
-                            <p className="text-sm text-gray-600">
-                                Gerenciamento de funcionários da empresa
-                            </p>
-                        </div>
-                        <div className="flex items-center space-x-4">
-                            <div className="text-right">
-                                <p className="text-sm font-medium text-gray-900">
-                                    {user?.username || 'Usuário'}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                    {user?.email || 'email@exemplo.com'}
-                                </p>
-                            </div>
-                            <Button variant="outline" size="sm" onClick={handleLogout}>
-                                Sair
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <UserHeader
+                title="Employees"
+                subtitle="Company employee management"
+            />
 
             {/* Main Content */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="bg-white rounded-lg shadow p-6">
                     <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-lg font-medium text-gray-900">
-                            Lista de Funcionários
-                        </h2>
+                        <div className="flex items-center space-x-4">
+                            <h2 className="text-lg font-medium text-gray-900">
+                                Employee List
+                            </h2>
+                            <div className="flex space-x-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => navigate('/dashboard')}
+                                >
+                                    🏠 Dashboard
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => navigate('/departments')}
+                                >
+                                    🏢 Departments
+                                </Button>
+                            </div>
+                        </div>
                         <Button variant="primary" size="sm" onClick={handleAddEmployee}>
-                            + Criar Novo Funcionário
+                            + Create New Employee
                         </Button>
                     </div>
 
@@ -142,7 +137,7 @@ const EmployeesListPage: React.FC = () => {
                         onEdit={handleEditEmployee}
                         onDelete={handleDeleteEmployee}
                         isLoading={isLoading}
-                        emptyMessage="Nenhum funcionário encontrado. Comece adicionando o primeiro funcionário à empresa."
+                        emptyMessage="No employees found. Start by adding the first employee to the company."
                     />
 
                     {/* Loading overlay para exclusão */}
@@ -151,7 +146,7 @@ const EmployeesListPage: React.FC = () => {
                             <div className="bg-white p-6 rounded-lg shadow-xl">
                                 <div className="flex items-center space-x-3">
                                     <LoadingSpinner size="sm" />
-                                    <span className="text-gray-700">Deletando...</span>
+                                    <span className="text-gray-700">Deleting...</span>
                                 </div>
                             </div>
                         </div>

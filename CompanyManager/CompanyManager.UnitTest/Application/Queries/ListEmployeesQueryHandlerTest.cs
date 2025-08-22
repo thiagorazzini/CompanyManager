@@ -26,7 +26,7 @@ namespace CompanyManager.UnitTest.Application.Queries
                 email: new Email(email),
                 documentNumber: new DocumentNumber(cpf),
                 dateOfBirth: new DateOfBirth(DateTime.Today.AddYears(-30)),
-                phones: new[] { new PhoneNumber(phone, "BR") },
+                phoneNumbers: new[] { phone },
                 jobTitleId: Guid.NewGuid(),
                 departmentId: departmentId
             );
@@ -176,13 +176,13 @@ namespace CompanyManager.UnitTest.Application.Queries
 
             // Criar employees com JobTitleIds específicos
             var emp1 = Employee.Create("John", "Doe", new Email("a@x.com"), new DocumentNumber("52998224725"), 
-                new DateOfBirth(DateTime.Today.AddYears(-30)), new[] { new PhoneNumber("11 99999-9999", "BR") }, 
+                new DateOfBirth(DateTime.Today.AddYears(-30)), new[] { "11 99999-9999" }, 
                 jobTitleId1, dept);
             var emp2 = Employee.Create("Jane", "Smith", new Email("b@x.com"), new DocumentNumber("11144477735"), 
-                new DateOfBirth(DateTime.Today.AddYears(-25)), new[] { new PhoneNumber("11 98888-8888", "BR") }, 
+                new DateOfBirth(DateTime.Today.AddYears(-25)), new[] { "11 98888-8888" }, 
                 jobTitleId2, dept);
             var emp3 = Employee.Create("Bob", "Brown", new Email("c@x.com"), new DocumentNumber("93541134780"), 
-                new DateOfBirth(DateTime.Today.AddYears(-35)), new[] { new PhoneNumber("11 97777-7777", "BR") }, 
+                new DateOfBirth(DateTime.Today.AddYears(-35)), new[] { "11 97777-7777" }, 
                 jobTitleId1, dept);
 
             await SeedAsync(repo, emp1, emp2, emp3);

@@ -20,7 +20,9 @@ namespace CompanyManager.UnitTest.Application.Handlers
             return UserAccount.Create(
                 userName: loginEmail,
                 passwordHash: hash,
-                employeeId: Guid.NewGuid()
+                employeeId: Guid.NewGuid(),
+                roleId: Guid.NewGuid(),
+                jobTitleId: Guid.NewGuid()
             );
         }
 

@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useAuth } from '@hooks/useAuth';
+
 import Button from '@components/ui/Button';
 import Input from '@components/ui/Input';
 import LoadingSpinner from '@components/LoadingSpinner';
+import UserHeader from '@components/layout/UserHeader';
 import departmentsService, { UpdateDepartmentRequest, Department } from '@services/departments/departmentsService';
 import toast from 'react-hot-toast';
 
 const DepartmentsEditPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
-    const { user, logout } = useAuth();
+
     const navigate = useNavigate();
     const [isLoading, setIsLoading] = useState(false);
     const [isInitialLoading, setIsInitialLoading] = useState(true);
@@ -33,10 +34,10 @@ const DepartmentsEditPage: React.FC = () => {
             setDepartment(data);
             setForm({
                 name: data.name,
-                description: data.description,
+                description: data.description || '',
             });
         } catch (error) {
-            toast.error('Erro ao carregar departamento');
+            toast.error('Error loading department');
             navigate('/departments');
         } finally {
             setIsInitialLoading(false);
@@ -47,11 +48,11 @@ const DepartmentsEditPage: React.FC = () => {
         const newErrors: Partial<UpdateDepartmentRequest> = {};
 
         if (!form.name.trim()) {
-            newErrors.name = 'Nome é obrigatório';
+            newErrors.name = 'Name is required';
         }
 
-        if (!form.description.trim()) {
-            newErrors.description = 'Descrição é obrigatória';
+        if (!form.description?.trim()) {
+            newErrors.description = 'Description is required';
         }
 
         setErrors(newErrors);
@@ -60,7 +61,7 @@ const DepartmentsEditPage: React.FC = () => {
 
     const handleInputChange = (field: keyof UpdateDepartmentRequest, value: string) => {
         setForm(prev => ({ ...prev, [field]: value }));
-        // Limpar erro do campo quando o usuário começar a digitar
+        // Clear field error when user starts typing
         if (errors[field]) {
             setErrors(prev => ({ ...prev, [field]: undefined }));
         }
@@ -76,10 +77,10 @@ const DepartmentsEditPage: React.FC = () => {
         try {
             setIsLoading(true);
             await departmentsService.updateDepartment(id, form);
-            toast.success('Departamento atualizado com sucesso!');
+            toast.success('Department updated successfully!');
             navigate('/departments');
         } catch (error) {
-            toast.error('Erro ao atualizar departamento');
+            toast.error('Error updating department');
         } finally {
             setIsLoading(false);
         }
@@ -87,10 +88,6 @@ const DepartmentsEditPage: React.FC = () => {
 
     const handleCancel = () => {
         navigate('/departments');
-    };
-
-    const handleLogout = () => {
-        logout();
     };
 
     if (isInitialLoading) {
@@ -106,10 +103,10 @@ const DepartmentsEditPage: React.FC = () => {
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="text-center">
                     <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                        Departamento não encontrado
+                        Department not found
                     </h2>
                     <Button variant="primary" onClick={() => navigate('/departments')}>
-                        Voltar para Departamentos
+                        Back to Departments
                     </Button>
                 </div>
             </div>
@@ -118,36 +115,10 @@ const DepartmentsEditPage: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <div className="bg-white shadow-sm border-b border-gray-200">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center py-4">
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-900">Editar Departamento</h1>
-                            <p className="text-sm text-gray-600">
-                                Atualizar informações do departamento
-                            </p>
-                        </div>
-                        <div className="flex items-center space-x-4">
-                            <div className="text-right">
-                                <p className="text-sm font-medium text-gray-900">
-                                    {user?.username || 'Usuário'}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                    {user?.email || 'email@exemplo.com'}
-                                </p>
-                            </div>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleLogout}
-                            >
-                                Sair
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <UserHeader
+                title="Edit Department"
+                subtitle="Update department information"
+            />
 
             {/* Main Content */}
             <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -156,11 +127,11 @@ const DepartmentsEditPage: React.FC = () => {
                         {/* Nome */}
                         <div>
                             <Input
-                                label="Nome do Departamento"
+                                label="Department Name"
                                 type="text"
                                 value={form.name}
                                 onChange={(value) => handleInputChange('name', value)}
-                                placeholder="Ex: Recursos Humanos"
+                                placeholder="Ex: Human Resources"
                                 error={errors.name}
                                 disabled={isLoading}
                                 required={true}
@@ -170,11 +141,11 @@ const DepartmentsEditPage: React.FC = () => {
                         {/* Descrição */}
                         <div>
                             <Input
-                                label="Descrição"
+                                label="Description"
                                 type="text"
-                                value={form.description}
+                                value={form.description || ''}
                                 onChange={(value) => handleInputChange('description', value)}
-                                placeholder="Descreva as responsabilidades e funções do departamento"
+                                placeholder="Describe the department's responsibilities and functions"
                                 error={errors.description}
                                 disabled={isLoading}
                                 required={true}
@@ -191,7 +162,7 @@ const DepartmentsEditPage: React.FC = () => {
                                     onClick={() => navigate('/departments')}
                                     disabled={isLoading}
                                 >
-                                    ← Voltar para Departamentos
+                                    ← Back to Departments
                                 </Button>
                                 <Button
                                     type="button"
@@ -211,7 +182,7 @@ const DepartmentsEditPage: React.FC = () => {
                                     onClick={handleCancel}
                                     disabled={isLoading}
                                 >
-                                    Cancelar
+                                    Cancel
                                 </Button>
                                 <Button
                                     type="submit"
@@ -221,10 +192,10 @@ const DepartmentsEditPage: React.FC = () => {
                                     {isLoading ? (
                                         <>
                                             <LoadingSpinner size="sm" className="mr-2" />
-                                            Salvando...
+                                            Saving...
                                         </>
                                     ) : (
-                                        'Salvar Alterações'
+                                        'Save Changes'
                                     )}
                                 </Button>
                             </div>

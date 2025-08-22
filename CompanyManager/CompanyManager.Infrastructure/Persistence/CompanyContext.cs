@@ -32,6 +32,12 @@ namespace CompanyManager.Infrastructure.Persistence
                 .IsRequired()
                 .HasComment("Nome de usuário (email) normalizado");
 
+            // ÍNDICE ÚNICO CRÍTICO para UserName (email) para evitar duplicatas
+            modelBuilder.Entity<UserAccount>()
+                .HasIndex(u => u.UserName)
+                .IsUnique()
+                .HasDatabaseName("IX_UserAccounts_UserName_Unique");
+
             // Configurações de Value Objects serão feitas nas configurações específicas das entidades
         }
 

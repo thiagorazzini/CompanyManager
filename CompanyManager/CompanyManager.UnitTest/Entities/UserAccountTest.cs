@@ -19,7 +19,8 @@ namespace CompanyManager.UnitTest.Entities
                 userName: "USER@Example.com",
                 passwordHash: "hash123",
                 employeeId: Guid.NewGuid(),
-                roleId: roleId);
+                roleId: roleId,
+                jobTitleId: Guid.NewGuid());
 
             acc.UserName.Should().Be("user@example.com");
             acc.PasswordHash.Should().Be("hash123");
@@ -144,6 +145,6 @@ namespace CompanyManager.UnitTest.Entities
         }
 
         private static UserAccount FakeUser() =>
-            UserAccount.Create("user@example.com", "hash", Guid.NewGuid(), Guid.NewGuid());
+            UserAccount.Create("user@example.com", "hash", Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
     }
 }

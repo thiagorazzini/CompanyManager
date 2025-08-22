@@ -1,16 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@hooks/useAuth';
 import Button from '@components/ui/Button';
 import { Input, Select, Form, FormRow, FormActions } from '@components/ui/Form';
-import LoadingSpinner from '@components/LoadingSpinner';
+
+import UserHeader from '@components/layout/UserHeader';
 import employeesService, { CreateEmployeeRequest } from '@services/employees/employeesService';
 import { useAvailableJobTitles, getJobTitleLevelName, canCreateJobTitle } from '@hooks/useJobTitles';
 import { useAvailableDepartments } from '@hooks/useDepartments';
 import toast from 'react-hot-toast';
 
 const EmployeeCreatePage: React.FC = () => {
-    const { user, logout } = useAuth();
+    const { userProfile } = useAuth();
     const navigate = useNavigate();
     const [isLoading, setIsLoading] = useState(false);
     const { availableJobTitles, loading: jobTitlesLoading, error: jobTitlesError } = useAvailableJobTitles();
@@ -28,9 +29,8 @@ const EmployeeCreatePage: React.FC = () => {
     });
     const [errors, setErrors] = useState<Partial<CreateEmployeeRequest>>({});
 
-    // Simular nível hierárquico do usuário atual (por enquanto)
-    // TODO: Implementar lógica real baseada no usuário logado
-    const currentUserLevel = 1; // President - pode criar todos os níveis
+    // Get current user's hierarchical level dynamically
+    const currentUserLevel = userProfile?.jobTitle?.hierarchyLevel || 1;
 
     const validateForm = (): boolean => {
         const newErrors: Partial<CreateEmployeeRequest> = {};
@@ -64,7 +64,7 @@ const EmployeeCreatePage: React.FC = () => {
         if (!form.password.trim()) {
             newErrors.password = 'Senha é obrigatória';
         }
-        // roleLevel removido - o nível é determinado pelo JobTitle.HierarchyLevel
+        // roleLevel removed - level is determined by JobTitle.HierarchyLevel
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -73,7 +73,7 @@ const EmployeeCreatePage: React.FC = () => {
     const handleInputChange = (field: keyof CreateEmployeeRequest, value: string) => {
         setForm(prev => ({ ...prev, [field]: value }));
 
-        // Limpar erro quando o usuário começar a digitar
+        // Clear error when user starts typing
         if (errors[field]) {
             setErrors(prev => ({ ...prev, [field]: undefined }));
         }
@@ -89,7 +89,7 @@ const EmployeeCreatePage: React.FC = () => {
         try {
             setIsLoading(true);
 
-            // Preparar dados para envio
+            // Prepare data for submission
             const submitData: CreateEmployeeRequest = {
                 ...form,
                 phoneNumbers: form.phoneNumbers.filter(phone => phone.trim() !== '')
@@ -99,8 +99,7 @@ const EmployeeCreatePage: React.FC = () => {
             toast.success('Funcionário criado com sucesso!');
             navigate('/employees');
         } catch (error) {
-            console.error('Erro ao criar funcionário:', error);
-            toast.error('Erro ao criar funcionário. Tente novamente.');
+            toast.error('Error creating employee. Please try again.');
         } finally {
             setIsLoading(false);
         }
@@ -110,11 +109,7 @@ const EmployeeCreatePage: React.FC = () => {
         navigate('/employees');
     };
 
-    const handleLogout = () => {
-        logout();
-    };
-
-    // Filtrar cargos baseado na hierarquia do usuário
+    // Filter job titles based on user hierarchy
     const availableJobTitleOptions = availableJobTitles
         .filter(jobTitle => canCreateJobTitle(currentUserLevel, jobTitle.hierarchyLevel))
         .map(jobTitle => ({
@@ -123,44 +118,22 @@ const EmployeeCreatePage: React.FC = () => {
             disabled: false
         }));
 
-    // Mostrar erro se não conseguir carregar cargos
+    // Show error if unable to load job titles
     if (jobTitlesError) {
-        toast.error(`Erro ao carregar cargos: ${jobTitlesError}`);
+        toast.error(`Error loading job titles: ${jobTitlesError}`);
     }
 
-    // Mostrar erro se não conseguir carregar departamentos
+    // Show error if unable to load departments
     if (departmentsError) {
-        toast.error(`Erro ao carregar departamentos: ${departmentsError}`);
+        toast.error(`Error loading departments: ${departmentsError}`);
     }
 
     return (
         <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <div className="bg-white shadow-sm border-b border-gray-200">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center py-4">
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-900">Criar Funcionário</h1>
-                            <p className="text-sm text-gray-600">
-                                Adicionar novo funcionário à empresa
-                            </p>
-                        </div>
-                        <div className="flex items-center space-x-4">
-                            <div className="text-right">
-                                <p className="text-sm font-medium text-gray-900">
-                                    {user?.username || 'Usuário'}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                    {user?.email || 'email@exemplo.com'}
-                                </p>
-                            </div>
-                            <Button variant="outline" size="sm" onClick={handleLogout}>
-                                Sair
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <UserHeader
+                title="Create Employee"
+                subtitle="Add new employee to the company"
+            />
 
             {/* Main Content */}
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -168,22 +141,22 @@ const EmployeeCreatePage: React.FC = () => {
                     <Form onSubmit={handleSubmit}>
                         <FormRow>
                             <Input
-                                label="Nome"
+                                label="First Name"
                                 name="firstName"
                                 value={form.firstName}
                                 onChange={(value) => handleInputChange('firstName', value)}
                                 error={errors.firstName}
                                 required
-                                placeholder="Digite o nome"
+                                placeholder="Enter first name"
                             />
                             <Input
-                                label="Sobrenome"
+                                label="Last Name"
                                 name="lastName"
                                 value={form.lastName}
                                 onChange={(value) => handleInputChange('lastName', value)}
                                 error={errors.lastName}
                                 required
-                                placeholder="Digite o sobrenome"
+                                placeholder="Enter last name"
                             />
                         </FormRow>
 
@@ -196,7 +169,7 @@ const EmployeeCreatePage: React.FC = () => {
                                 onChange={(value) => handleInputChange('email', value)}
                                 error={errors.email}
                                 required
-                                placeholder="Digite o email"
+                                placeholder="Enter email"
                             />
                             <Input
                                 label="CPF"
@@ -212,7 +185,7 @@ const EmployeeCreatePage: React.FC = () => {
 
                         <FormRow>
                             <Input
-                                label="Data de Nascimento"
+                                label="Date of Birth"
                                 name="dateOfBirth"
                                 type="date"
                                 value={form.dateOfBirth}
@@ -221,7 +194,7 @@ const EmployeeCreatePage: React.FC = () => {
                                 required
                             />
                             <Input
-                                label="Telefone"
+                                label="Phone"
                                 name="phoneNumbers"
                                 type="tel"
                                 value={form.phoneNumbers[0] || ''}
@@ -238,17 +211,17 @@ const EmployeeCreatePage: React.FC = () => {
 
                         <FormRow>
                             <Select
-                                label="Cargo"
+                                label="Job Title"
                                 name="jobTitle"
                                 value={form.jobTitleId}
                                 onChange={(value) => handleInputChange('jobTitleId', value)}
                                 options={availableJobTitleOptions}
                                 error={errors.jobTitleId}
                                 required
-                                placeholder={jobTitlesLoading ? "Carregando cargos..." : "Selecione o cargo"}
+                                placeholder={jobTitlesLoading ? "Loading job titles..." : "Select job title"}
                             />
                             <Select
-                                label="Departamento"
+                                label="Department"
                                 name="departmentId"
                                 value={form.departmentId}
                                 onChange={(value) => handleInputChange('departmentId', value)}
@@ -258,20 +231,20 @@ const EmployeeCreatePage: React.FC = () => {
                                 }))}
                                 error={errors.departmentId}
                                 required
-                                placeholder={departmentsLoading ? "Carregando departamentos..." : "Selecione o departamento"}
+                                placeholder={departmentsLoading ? "Loading departments..." : "Select department"}
                             />
                         </FormRow>
 
                         <FormRow>
                             <Input
-                                label="Senha"
+                                label="Password"
                                 name="password"
                                 type="password"
                                 value={form.password}
                                 onChange={(value) => handleInputChange('password', value)}
                                 error={errors.password}
                                 required
-                                placeholder="Digite a senha"
+                                placeholder="Enter password"
                             />
                         </FormRow>
 
@@ -285,13 +258,23 @@ const EmployeeCreatePage: React.FC = () => {
                                 </div>
                                 <div className="ml-3">
                                     <h3 className="text-sm font-medium text-blue-800">
-                                        Hierarquia de Cargos
+                                        Job Title Hierarchy
                                     </h3>
                                     <div className="mt-2 text-sm text-blue-700">
-                                        <p>Você pode criar funcionários com cargos de mesmo nível ou inferior ao seu.</p>
-                                        <p className="mt-1">Nível atual: <strong>{getJobTitleLevelName(currentUserLevel)}</strong></p>
+                                        <p>You can create employees with job titles at the same level or below yours.</p>
+                                        <p className="mt-1">
+                                            <strong>User:</strong> {userProfile?.firstName && userProfile?.lastName
+                                                ? `${userProfile.firstName} ${userProfile.lastName}`
+                                                : 'Name not available'}
+                                        </p>
+                                        <p className="mt-1">
+                                            <strong>Email:</strong> {userProfile?.email || 'Email not available'}
+                                        </p>
+                                        <p className="mt-1">
+                                            <strong>Current Level:</strong> {userProfile?.jobTitle?.name || getJobTitleLevelName(currentUserLevel)}
+                                        </p>
                                         <p className="mt-1 text-xs text-blue-600">
-                                            💡 O nível hierárquico é automaticamente definido pelo cargo selecionado
+                                            💡 The hierarchical level is automatically set by the selected job title
                                         </p>
                                     </div>
                                 </div>
@@ -307,7 +290,7 @@ const EmployeeCreatePage: React.FC = () => {
                                     onClick={() => navigate('/employees')}
                                     disabled={isLoading}
                                 >
-                                    ← Voltar para Funcionários
+                                    ← Back to Employees
                                 </Button>
                                 <Button
                                     type="button"
@@ -327,7 +310,7 @@ const EmployeeCreatePage: React.FC = () => {
                                     onClick={handleCancel}
                                     disabled={isLoading}
                                 >
-                                    Cancelar
+                                    Cancel
                                 </Button>
                                 <Button
                                     type="submit"
@@ -335,7 +318,7 @@ const EmployeeCreatePage: React.FC = () => {
                                     loading={isLoading}
                                     disabled={isLoading}
                                 >
-                                    {isLoading ? 'Criando...' : 'Criar Funcionário'}
+                                    {isLoading ? 'Creating...' : 'Create Employee'}
                                 </Button>
                             </div>
                         </FormActions>

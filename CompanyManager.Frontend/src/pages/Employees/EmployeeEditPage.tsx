@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useAuth } from '@hooks/useAuth';
+
 import Button from '@components/ui/Button';
 import { Input, Select, Form, FormRow, FormActions } from '@components/ui/Form';
 import LoadingSpinner from '@components/LoadingSpinner';
+import UserHeader from '@components/layout/UserHeader';
 import employeesService, { UpdateEmployeeRequest, EmployeeDetail } from '@services/employees/employeesService';
 import { useAvailableJobTitles, getJobTitleLevelName, canCreateJobTitle } from '@hooks/useJobTitles';
 import { useAvailableDepartments } from '@hooks/useDepartments';
@@ -11,7 +12,7 @@ import toast from 'react-hot-toast';
 
 const EmployeeEditPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
-    const { user, logout } = useAuth();
+
     const navigate = useNavigate();
     const [isLoading, setIsLoading] = useState(false);
     const [isInitialLoading, setIsInitialLoading] = useState(true);
@@ -31,8 +32,8 @@ const EmployeeEditPage: React.FC = () => {
     });
     const [errors, setErrors] = useState<Partial<UpdateEmployeeRequest>>({});
 
-    // Simular nível hierárquico do usuário atual (por enquanto)
-    const currentUserLevel = 1; // President - pode criar todos os níveis
+    // Simulate current user's hierarchical level (temporary)
+    const currentUserLevel = 1; // President - can create all levels
 
     useEffect(() => {
         if (id) {
@@ -100,7 +101,7 @@ const EmployeeEditPage: React.FC = () => {
     const handleInputChange = (field: keyof UpdateEmployeeRequest, value: string) => {
         setForm(prev => ({ ...prev, [field]: value }));
 
-        // Limpar erro quando o usuário começar a digitar
+        // Clear error when user starts typing
         if (errors[field]) {
             setErrors(prev => ({ ...prev, [field]: undefined }));
         }
@@ -109,7 +110,7 @@ const EmployeeEditPage: React.FC = () => {
     const handlePasswordChange = (value: string) => {
         setForm(prev => ({ ...prev, password: value }));
 
-        // Limpar erro quando o usuário começar a digitar
+        // Clear error when user starts typing
         if (errors.password) {
             setErrors(prev => ({ ...prev, password: undefined }));
         }
@@ -146,11 +147,9 @@ const EmployeeEditPage: React.FC = () => {
         navigate('/employees');
     };
 
-    const handleLogout = () => {
-        logout();
-    };
 
-    // Filtrar cargos baseado na hierarquia do usuário
+
+    // Filter job titles based on user hierarchy
     const availableJobTitleOptions = availableJobTitles
         .filter(jobTitle => canCreateJobTitle(currentUserLevel, jobTitle.hierarchyLevel))
         .map(jobTitle => ({
@@ -159,14 +158,14 @@ const EmployeeEditPage: React.FC = () => {
             disabled: false
         }));
 
-    // Mostrar erro se não conseguir carregar cargos
+    // Show error if unable to load job titles
     if (jobTitlesError) {
-        toast.error(`Erro ao carregar cargos: ${jobTitlesError}`);
+        toast.error(`Error loading job titles: ${jobTitlesError}`);
     }
 
-    // Mostrar erro se não conseguir carregar departamentos
+    // Show error if unable to load departments
     if (departmentsError) {
-        toast.error(`Erro ao carregar departamentos: ${departmentsError}`);
+        toast.error(`Error loading departments: ${departmentsError}`);
     }
 
     if (isInitialLoading) {
@@ -193,10 +192,10 @@ const EmployeeEditPage: React.FC = () => {
                             Funcionário não encontrado
                         </h3>
                         <p className="text-gray-500 mb-4">
-                            O funcionário que você está tentando editar não foi encontrado.
+                            The employee you are trying to edit was not found.
                         </p>
                         <Button variant="primary" onClick={handleCancel}>
-                            Voltar para Funcionários
+                            Back to Employees
                         </Button>
                     </div>
                 </div>
@@ -206,32 +205,10 @@ const EmployeeEditPage: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <div className="bg-white shadow-sm border-b border-gray-200">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center py-4">
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-900">Editar Funcionário</h1>
-                            <p className="text-sm text-gray-600">
-                                Modificar dados do funcionário
-                            </p>
-                        </div>
-                        <div className="flex items-center space-x-4">
-                            <div className="text-right">
-                                <p className="text-sm font-medium text-gray-900">
-                                    {user?.firstName || 'Usuário'}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                    {user?.email || 'email@exemplo.com'}
-                                </p>
-                            </div>
-                            <Button variant="outline" size="sm" onClick={handleLogout}>
-                                Sair
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <UserHeader
+                title="Edit Employee"
+                subtitle="Modify employee data"
+            />
 
             {/* Main Content */}
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -245,7 +222,7 @@ const EmployeeEditPage: React.FC = () => {
                                 onChange={(value) => handleInputChange('firstName', value)}
                                 error={errors.firstName}
                                 required
-                                placeholder="Digite o nome"
+                                placeholder="Enter first name"
                             />
                             <Input
                                 label="Sobrenome"
@@ -254,7 +231,7 @@ const EmployeeEditPage: React.FC = () => {
                                 onChange={(value) => handleInputChange('lastName', value)}
                                 error={errors.lastName}
                                 required
-                                placeholder="Digite o sobrenome"
+                                placeholder="Enter last name"
                             />
                         </FormRow>
 
@@ -267,7 +244,7 @@ const EmployeeEditPage: React.FC = () => {
                                 onChange={(value) => handleInputChange('email', value)}
                                 error={errors.email}
                                 required
-                                placeholder="Digite o email"
+                                placeholder="Enter email"
                             />
                             <Input
                                 label="CPF"
@@ -304,7 +281,7 @@ const EmployeeEditPage: React.FC = () => {
                                 options={availableJobTitleOptions}
                                 error={errors.jobTitleId}
                                 required
-                                placeholder={jobTitlesLoading ? "Carregando cargos..." : "Selecione o cargo"}
+                                placeholder={jobTitlesLoading ? "Loading job titles..." : "Select job title"}
                             />
                         </FormRow>
 
@@ -320,7 +297,7 @@ const EmployeeEditPage: React.FC = () => {
                                 }))}
                                 error={errors.departmentId}
                                 required
-                                placeholder={departmentsLoading ? "Carregando departamentos..." : "Selecione o departamento"}
+                                placeholder={departmentsLoading ? "Loading departments..." : "Select department"}
                             />
                             <Input
                                 label="Nova Senha (opcional)"
@@ -333,23 +310,46 @@ const EmployeeEditPage: React.FC = () => {
                             />
                         </FormRow>
 
-                        <FormActions>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={handleCancel}
-                                disabled={isLoading}
-                            >
-                                Cancelar
-                            </Button>
-                            <Button
-                                type="submit"
-                                variant="primary"
-                                loading={isLoading}
-                                disabled={isLoading}
-                            >
-                                {isLoading ? 'Salvando...' : 'Salvar Alterações'}
-                            </Button>
+                        <FormActions justify="between">
+                            {/* Botões da esquerda */}
+                            <div className="flex space-x-3">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => navigate('/employees')}
+                                    disabled={isLoading}
+                                >
+                                    ← Back to Employees
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => navigate('/dashboard')}
+                                    disabled={isLoading}
+                                >
+                                    🏠 Dashboard
+                                </Button>
+                            </div>
+
+                            {/* Botões da direita */}
+                            <div className="flex space-x-3">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={handleCancel}
+                                    disabled={isLoading}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    variant="primary"
+                                    loading={isLoading}
+                                    disabled={isLoading}
+                                >
+                                    {isLoading ? 'Saving...' : 'Save Changes'}
+                                </Button>
+                            </div>
                         </FormActions>
                     </Form>
                 </div>

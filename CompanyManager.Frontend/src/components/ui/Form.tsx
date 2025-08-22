@@ -77,7 +77,7 @@ export const Select: React.FC<SelectProps> = ({
     options,
     error,
     required = false,
-    placeholder = 'Selecione uma opção',
+    placeholder = 'Select an option',
     className = '',
 }) => {
     return (

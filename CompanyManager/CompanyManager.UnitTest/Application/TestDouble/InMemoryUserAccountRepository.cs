@@ -226,7 +226,7 @@ namespace CompanyManager.UnitTest.Application.TestDouble
                 return Task.FromResult(allPermissions);
             }
 
-            return Task.FromResult(role.Permissions);
+            return Task.FromResult(role.Permissions.AsEnumerable());
         }
 
         public Task<bool> IsSuperUserAsync(Guid userId, CancellationToken ct)

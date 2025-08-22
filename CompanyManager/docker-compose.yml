@@ -1,20 +1,88 @@
 version: "3.9"
+
 services:
+  # Banco de Dados SQL Server
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: companymanager-sql
     environment:
       - ACCEPT_EULA=Y
-      - MSSQL_SA_PASSWORD=senha@123!
+      - MSSQL_SA_PASSWORD=Senha@1234A!
       - MSSQL_PID=Express
+      - MSSQL_TCP_PORT=1433
+      - MSSQL_AGENT_ENABLED=false
+      - MSSQL_LCID=1033
+      - MSSQL_COLLATION=SQL_Latin1_General_CP1_CI_AS
     ports:
       - "1433:1433"
-    healthcheck:
-      test: [ "CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P $$MSSQL_SA_PASSWORD -C -Q 'SELECT 1' || exit 1" ]
-      interval: 5s
-      timeout: 5s
-      retries: 20
     volumes:
       - mssql_data:/var/opt/mssql
+      - ./sql-scripts:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P $$MSSQL_SA_PASSWORD -C -Q 'SELECT 1' || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    networks:
+      - companymanager-network
+
+  # Backend .NET 8
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: companymanager-api
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Server=companymanager-sql;Database=CompanyManager;User Id=sa;Password=Senha@1234A!;TrustServerCertificate=true;Encrypt=false;MultipleActiveResultSets=true;Connection Timeout=30
+      - JWT__SecretKey=your-super-secret-key-here-minimum-32-characters
+      - JWT__Issuer=CompanyManager.Dev
+      - JWT__Audience=CompanyManager.Web.Dev
+      - JWT__ExpirationHours=24
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    networks:
+      - companymanager-network
+    restart: unless-stopped
+
+  # Frontend React
+  frontend:
+    build:
+      context: ../CompanyManager.Frontend
+      dockerfile: Dockerfile
+    container_name: companymanager-frontend
+    ports:
+      - "3000:80"
+    volumes:
+      - ../CompanyManager.Frontend:/app
+      - /app/node_modules
+    networks:
+      - companymanager-network
+    restart: unless-stopped
+
+  # Adminer (opcional - para gerenciar banco)
+  adminer:
+    image: adminer:latest
+    container_name: companymanager-adminer
+    ports:
+      - "8082:8080"
+    environment:
+      - ADMINER_DEFAULT_SERVER=sqlserver
+    depends_on:
+      - sqlserver
+    networks:
+      - companymanager-network
+    restart: unless-stopped
+
 volumes:
   mssql_data:
+    driver: local
+
+networks:
+  companymanager-network:
+    driver: bridge

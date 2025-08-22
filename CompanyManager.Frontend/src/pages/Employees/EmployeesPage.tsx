@@ -1,56 +1,49 @@
 import React from 'react';
-import { useAuth } from '@hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
+
 import Button from '@components/ui/Button';
+import UserHeader from '@components/layout/UserHeader';
 
 const EmployeesPage: React.FC = () => {
-    const { user, logout } = useAuth();
+    const navigate = useNavigate();
 
-    const handleLogout = () => {
-        logout();
-    };
+
+
 
     return (
         <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <div className="bg-white shadow-sm border-b border-gray-200">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center py-4">
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-900">Funcionários</h1>
-                            <p className="text-sm text-gray-600">
-                                Gerenciamento de funcionários da empresa
-                            </p>
-                        </div>
-                        <div className="flex items-center space-x-4">
-                            <div className="text-right">
-                                <p className="text-sm font-medium text-gray-900">
-                                    {user?.username || 'Usuário'}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                    {user?.email || 'email@exemplo.com'}
-                                </p>
-                            </div>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleLogout}
-                            >
-                                Sair
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <UserHeader
+                title="Employees"
+                subtitle="Company employee management"
+            />
 
             {/* Main Content */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="bg-white rounded-lg shadow p-6">
                     <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-lg font-medium text-gray-900">
-                            Lista de Funcionários
-                        </h2>
+                        <div className="flex items-center space-x-4">
+                            <h2 className="text-lg font-medium text-gray-900">
+                                Employee List
+                            </h2>
+                            <div className="flex space-x-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => navigate('/dashboard')}
+                                >
+                                    🏠 Dashboard
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => navigate('/departments')}
+                                >
+                                    🏢 Departments
+                                </Button>
+                            </div>
+                        </div>
                         <Button variant="primary" size="sm">
-                            + Novo Funcionário
+                            + New Employee
                         </Button>
                     </div>
 
@@ -62,10 +55,10 @@ const EmployeesPage: React.FC = () => {
                             </svg>
                         </div>
                         <h3 className="text-lg font-medium text-gray-900 mb-2">
-                            Nenhum funcionário encontrado
+                            No employees found
                         </h3>
                         <p className="text-gray-500">
-                            Comece adicionando o primeiro funcionário à empresa.
+                            Start by adding the first employee to the company.
                         </p>
                     </div>
                 </div>

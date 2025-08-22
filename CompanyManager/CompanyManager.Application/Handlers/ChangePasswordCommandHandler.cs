@@ -5,7 +5,6 @@ using CompanyManager.Application.Abstractions;
 using CompanyManager.Domain.Interfaces;
 using CompanyManager.Application.Commands;
 using CompanyManager.Application.DTOs;
-using CompanyManager.Application.Services;
 using CompanyManager.Application.Validators;
 using CompanyManager.Domain.Entities;
 using FluentValidation;
@@ -13,41 +12,50 @@ using System.Linq;
 
 namespace CompanyManager.Application.Handlers
 {
+    /// <summary>
+    /// Handles password change operations by validating credentials and updating user passwords
+    /// </summary>
     public sealed class ChangePasswordCommandHandler : IChangePasswordCommandHandler
     {
-        private readonly IUserAccountRepository _users;
-        private readonly PasswordHasher _hasher;
+        private readonly IUserAccountRepository _userRepository;
+        private readonly IPasswordHasher _passwordHasher;
         private readonly IValidator<ChangePasswordRequest> _validator;
 
         public ChangePasswordCommandHandler(
-            IUserAccountRepository users, 
-            PasswordHasher hasher,
+            IUserAccountRepository userRepository, 
+            IPasswordHasher passwordHasher,
             IValidator<ChangePasswordRequest> validator)
         {
-            _users = users ?? throw new ArgumentNullException(nameof(users));
-            _hasher = hasher ?? throw new ArgumentNullException(nameof(hasher));
+            _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+            _passwordHasher = passwordHasher ?? throw new ArgumentNullException(nameof(passwordHasher));
             _validator = validator ?? throw new ArgumentNullException(nameof(validator));
         }
 
-        public async Task Handle(ChangePasswordCommand cmd, CancellationToken ct)
+        /// <summary>
+        /// Handles the password change command by orchestrating validation and update operations
+        /// </summary>
+        public async Task Handle(ChangePasswordCommand command, CancellationToken cancellationToken)
         {
-            await ValidateRequest(cmd, ct);
-            await ValidateUserCredentials(cmd, ct);
-            ValidateNewPasswordRequirements(cmd);
-            await UpdateUserPassword(cmd, ct);
+            await ValidateRequestAsync(command, cancellationToken);
+            await ValidateUserCredentialsAsync(command, cancellationToken);
+            ValidateNewPasswordRequirements(command);
+            await UpdateUserPasswordAsync(command, cancellationToken);
         }
 
-        private async Task ValidateRequest(ChangePasswordCommand cmd, CancellationToken ct)
+        /// <summary>
+        /// Validates the change password request using FluentValidation
+        /// </summary>
+        private async Task ValidateRequestAsync(ChangePasswordCommand command, CancellationToken cancellationToken)
         {
             var changePasswordRequest = new ChangePasswordRequest
             {
-                Email = cmd.Email,
-                CurrentPassword = cmd.CurrentPassword,
-                NewPassword = cmd.NewPassword,
-                ConfirmNewPassword = cmd.ConfirmNewPassword
+                Email = command.Email,
+                CurrentPassword = command.CurrentPassword,
+                NewPassword = command.NewPassword,
+                ConfirmNewPassword = command.ConfirmNewPassword
             };
 
-            var validationResult = await _validator.ValidateAsync(changePasswordRequest, ct);
+            var validationResult = await _validator.ValidateAsync(changePasswordRequest, cancellationToken);
             if (!validationResult.IsValid)
             {
                 var errors = string.Join("; ", validationResult.Errors.Select(e => e.ErrorMessage));
@@ -55,46 +63,64 @@ namespace CompanyManager.Application.Handlers
             }
         }
 
-        private async Task ValidateUserCredentials(ChangePasswordCommand cmd, CancellationToken ct)
+        /// <summary>
+        /// Validates user credentials by checking email and current password
+        /// </summary>
+        private async Task ValidateUserCredentialsAsync(ChangePasswordCommand command, CancellationToken cancellationToken)
         {
-            var normalizedEmail = NormalizeEmail(cmd.Email);
-            var user = await FindUserByEmail(normalizedEmail, ct);
-            ValidateCurrentPassword(cmd.CurrentPassword, user.PasswordHash);
+            var normalizedEmail = NormalizeEmail(command.Email);
+            var user = await FindUserByEmailAsync(normalizedEmail, cancellationToken);
+            ValidateCurrentPassword(command.CurrentPassword, user.PasswordHash);
         }
 
+        /// <summary>
+        /// Normalizes email by trimming whitespace and converting to lowercase
+        /// </summary>
         private static string NormalizeEmail(string email) =>
             (email ?? string.Empty).Trim().ToLowerInvariant();
 
-        private async Task<UserAccount> FindUserByEmail(string email, CancellationToken ct)
+        /// <summary>
+        /// Finds user by email and throws exception if not found
+        /// </summary>
+        private async Task<UserAccount> FindUserByEmailAsync(string email, CancellationToken cancellationToken)
         {
-            var user = await _users.FindByEmailAsync(email, ct);
+            var user = await _userRepository.FindByEmailAsync(email, cancellationToken);
             if (user is null)
                 throw new UnauthorizedAccessException("Invalid credentials.");
 
             return user;
         }
 
+        /// <summary>
+        /// Validates current password against stored hash
+        /// </summary>
         private void ValidateCurrentPassword(string currentPassword, string storedHash)
         {
-            if (!_hasher.Verify(currentPassword ?? string.Empty, storedHash))
+            if (!_passwordHasher.Verify(currentPassword ?? string.Empty, storedHash))
                 throw new UnauthorizedAccessException("Invalid credentials.");
         }
 
-        private void ValidateNewPasswordRequirements(ChangePasswordCommand cmd)
+        /// <summary>
+        /// Validates that new password is different from current password
+        /// </summary>
+        private void ValidateNewPasswordRequirements(ChangePasswordCommand command)
         {
-            if (string.Equals(cmd.NewPassword, cmd.CurrentPassword, StringComparison.Ordinal))
-                throw new ArgumentException("New password must be different from the current one.", nameof(cmd.NewPassword));
+            if (string.Equals(command.NewPassword, command.CurrentPassword, StringComparison.Ordinal))
+                throw new ArgumentException("New password must be different from the current one.", nameof(command.NewPassword));
         }
 
-        private async Task UpdateUserPassword(ChangePasswordCommand cmd, CancellationToken ct)
+        /// <summary>
+        /// Updates user password with new hash and persists changes
+        /// </summary>
+        private async Task UpdateUserPasswordAsync(ChangePasswordCommand command, CancellationToken cancellationToken)
         {
-            var normalizedEmail = NormalizeEmail(cmd.Email);
-            var user = await FindUserByEmail(normalizedEmail, ct);
+            var normalizedEmail = NormalizeEmail(command.Email);
+            var user = await FindUserByEmailAsync(normalizedEmail, cancellationToken);
             
-            var newHash = _hasher.Hash(cmd.NewPassword);
+            var newHash = _passwordHasher.Hash(command.NewPassword);
             user.ChangePassword(newHash);
 
-            await _users.UpdateAsync(user, ct);
+            await _userRepository.UpdateAsync(user, cancellationToken);
         }
     }
 }

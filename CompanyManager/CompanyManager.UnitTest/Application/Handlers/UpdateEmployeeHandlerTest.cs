@@ -7,6 +7,8 @@ using CompanyManager.Domain.ValueObjects;
 using CompanyManager.UnitTest.Application.TestDouble;
 using FluentAssertions;
 using FluentValidation;
+using Microsoft.Extensions.Logging;
+using Moq;
 
 namespace CompanyManager.UnitTest.Application.Handlers
 {
@@ -21,7 +23,7 @@ namespace CompanyManager.UnitTest.Application.Handlers
                 email: new Email(email),
                 documentNumber: new DocumentNumber(cpf),
                 dateOfBirth: new DateOfBirth(DateTime.Today.AddYears(-30)),
-                phones: new[] { new PhoneNumber("11 91111-1111", defaultCountry: "BR") },
+                phoneNumbers: new[] { "11 91111-1111" },
                 jobTitleId: Guid.NewGuid(),
                 departmentId: departmentId
             );
@@ -65,12 +67,12 @@ namespace CompanyManager.UnitTest.Application.Handlers
             var departments = new StubDepartmentRepository(new[] { deptA, deptB });
 
             var handler = new UpdateEmployeeCommandHandler(
-                employees, 
-                departments, 
-                new StubJobTitleRepository(), 
-                new InMemoryUserAccountRepository(), 
-                new FakeHasher(), 
-                CreateValidator());
+                employees,                              // IEmployeeRepository
+                new InMemoryUserAccountRepository(),    // IUserAccountRepository  
+                departments,                            // IDepartmentRepository
+                new StubJobTitleRepository(),          // IJobTitleRepository
+                new FakeHasher(),                      // IPasswordHasher
+                new Mock<ILogger<UpdateEmployeeCommandHandler>>().Object); // ILogger
             
             var cmd = MakeCommand(
                 employee.Id,
@@ -95,7 +97,7 @@ namespace CompanyManager.UnitTest.Application.Handlers
             updated.DepartmentId.Should().Be(deptB);
 
             // telefones sincronizados (ordem não importa)
-            var e164 = updated.Phones.Select(p => p.E164).ToHashSet();
+            var e164 = updated.Phones.Select(p => p.PhoneNumber.E164).ToHashSet();
             e164.Should().BeEquivalentTo(new[]
             {
                 new PhoneNumber("11 92222-2222", "BR").E164,
@@ -112,12 +114,12 @@ namespace CompanyManager.UnitTest.Application.Handlers
             var employees = new ProbingEmployeeRepository(seed: null);
             var departments = new StubDepartmentRepository(new[] { Guid.NewGuid() });
             var handler = new UpdateEmployeeCommandHandler(
-                employees, 
-                departments, 
-                new StubJobTitleRepository(), 
-                new InMemoryUserAccountRepository(), 
-                new FakeHasher(), 
-                CreateValidator());
+                employees,                              // IEmployeeRepository
+                new InMemoryUserAccountRepository(),    // IUserAccountRepository  
+                departments,                            // IDepartmentRepository
+                new StubJobTitleRepository(),          // IJobTitleRepository
+                new FakeHasher(),                      // IPasswordHasher
+                new Mock<ILogger<UpdateEmployeeCommandHandler>>().Object); // ILogger
 
             var cmd = MakeCommand(Guid.NewGuid(), Guid.NewGuid(), "j@c.com", "52998224725", "11 99999-9999");
 
@@ -135,12 +137,12 @@ namespace CompanyManager.UnitTest.Application.Handlers
             var employees = new ProbingEmployeeRepository(employee);
             var departments = new StubDepartmentRepository(new[] { deptA }); // deptB não existe
             var handler = new UpdateEmployeeCommandHandler(
-                employees, 
-                departments, 
-                new StubJobTitleRepository(), 
-                new InMemoryUserAccountRepository(), 
-                new FakeHasher(), 
-                CreateValidator());
+                employees,                              // IEmployeeRepository
+                new InMemoryUserAccountRepository(),    // IUserAccountRepository  
+                departments,                            // IDepartmentRepository
+                new StubJobTitleRepository(),          // IJobTitleRepository
+                new FakeHasher(),                      // IPasswordHasher
+                new Mock<ILogger<UpdateEmployeeCommandHandler>>().Object); // ILogger
 
             var cmd = MakeCommand(employee.Id, deptId: Guid.NewGuid(),
                                   email: employee.Email.Value,
@@ -163,12 +165,12 @@ namespace CompanyManager.UnitTest.Application.Handlers
 
             var departments = new StubDepartmentRepository(new[] { deptId });
             var handler = new UpdateEmployeeCommandHandler(
-                employees, 
-                departments, 
-                new StubJobTitleRepository(), 
-                new InMemoryUserAccountRepository(), 
-                new FakeHasher(), 
-                CreateValidator());
+                employees,                              // IEmployeeRepository
+                new InMemoryUserAccountRepository(),    // IUserAccountRepository  
+                departments,                            // IDepartmentRepository
+                new StubJobTitleRepository(),          // IJobTitleRepository
+                new FakeHasher(),                      // IPasswordHasher
+                new Mock<ILogger<UpdateEmployeeCommandHandler>>().Object); // ILogger
 
             var cmd = MakeCommand(employee.Id, deptId, "jane.doe@company.com", "52998224725", "11 99999-9999");
 
@@ -189,12 +191,12 @@ namespace CompanyManager.UnitTest.Application.Handlers
             };
             var departments = new StubDepartmentRepository(new[] { dept });
             var handler = new UpdateEmployeeCommandHandler(
-                employees, 
-                departments, 
-                new StubJobTitleRepository(), 
-                new InMemoryUserAccountRepository(), 
-                new FakeHasher(), 
-                CreateValidator());
+                employees,                              // IEmployeeRepository
+                new InMemoryUserAccountRepository(),    // IUserAccountRepository  
+                departments,                            // IDepartmentRepository
+                new StubJobTitleRepository(),          // IJobTitleRepository
+                new FakeHasher(),                      // IPasswordHasher
+                new Mock<ILogger<UpdateEmployeeCommandHandler>>().Object); // ILogger
 
             var cmd = MakeCommand(employee.Id, dept,
                                   email: employee.Email.Value,
@@ -216,12 +218,12 @@ namespace CompanyManager.UnitTest.Application.Handlers
 
             var departments = new StubDepartmentRepository(new[] { deptId });
             var handler = new UpdateEmployeeCommandHandler(
-                employees, 
-                departments, 
-                new StubJobTitleRepository(), 
-                new InMemoryUserAccountRepository(), 
-                new FakeHasher(), 
-                CreateValidator());
+                employees,                              // IEmployeeRepository
+                new InMemoryUserAccountRepository(),    // IUserAccountRepository  
+                departments,                            // IDepartmentRepository
+                new StubJobTitleRepository(),          // IJobTitleRepository
+                new FakeHasher(),                      // IPasswordHasher
+                new Mock<ILogger<UpdateEmployeeCommandHandler>>().Object); // ILogger
 
             var cmd = MakeCommand(employee.Id, deptId, "jane.doe@company.com", "11144477735", "11 99999-9999");
 
@@ -242,12 +244,12 @@ namespace CompanyManager.UnitTest.Application.Handlers
             };
             var departments = new StubDepartmentRepository(new[] { dept });
             var handler = new UpdateEmployeeCommandHandler(
-                employees, 
-                departments, 
-                new StubJobTitleRepository(), 
-                new InMemoryUserAccountRepository(), 
-                new FakeHasher(), 
-                CreateValidator());
+                employees,                              // IEmployeeRepository
+                new InMemoryUserAccountRepository(),    // IUserAccountRepository  
+                departments,                            // IDepartmentRepository
+                new StubJobTitleRepository(),          // IJobTitleRepository
+                new FakeHasher(),                      // IPasswordHasher
+                new Mock<ILogger<UpdateEmployeeCommandHandler>>().Object); // ILogger
 
             var cmd = MakeCommand(employee.Id, dept,
                                   email: employee.Email.Value,
@@ -264,17 +266,17 @@ namespace CompanyManager.UnitTest.Application.Handlers
         {
             var dept = Guid.NewGuid();
             var employee = NewEmployee(dept);
-            employee.AddPhone(new PhoneNumber("11 93333-3333", "BR")); // agora tem 2
+            employee.AddPhone("11 93333-3333"); // agora tem 2
 
             var employees = new ProbingEmployeeRepository(employee);
             var departments = new StubDepartmentRepository(new[] { dept });
             var handler = new UpdateEmployeeCommandHandler(
-                employees, 
-                departments, 
-                new StubJobTitleRepository(), 
-                new InMemoryUserAccountRepository(), 
-                new FakeHasher(), 
-                CreateValidator());
+                employees,                              // IEmployeeRepository
+                new InMemoryUserAccountRepository(),    // IUserAccountRepository  
+                departments,                            // IDepartmentRepository
+                new StubJobTitleRepository(),          // IJobTitleRepository
+                new FakeHasher(),                      // IPasswordHasher
+                new Mock<ILogger<UpdateEmployeeCommandHandler>>().Object); // ILogger
 
             // Manda apenas 1 número -> remove o outro
             var cmd = MakeCommand(employee.Id, dept,
@@ -286,7 +288,7 @@ namespace CompanyManager.UnitTest.Application.Handlers
 
             var updated = await employees.GetByIdAsync(employee.Id, default);
             updated!.Phones.Should().HaveCount(1);
-            updated.Phones.Single().E164.Should().Be(new PhoneNumber("11 93333-3333", "BR").E164);
+            updated.Phones.Single().PhoneNumber.E164.Should().Be(new PhoneNumber("11 93333-3333", "BR").E164);
         }
 
         [Fact(DisplayName = "Should reject empty phone numbers")]
@@ -297,12 +299,12 @@ namespace CompanyManager.UnitTest.Application.Handlers
             var employees = new ProbingEmployeeRepository(employee);
             var departments = new StubDepartmentRepository(new[] { deptId });
             var handler = new UpdateEmployeeCommandHandler(
-                employees, 
-                departments, 
-                new StubJobTitleRepository(), 
-                new InMemoryUserAccountRepository(), 
-                new FakeHasher(), 
-                CreateValidator());
+                employees,                              // IEmployeeRepository
+                new InMemoryUserAccountRepository(),    // IUserAccountRepository  
+                departments,                            // IDepartmentRepository
+                new StubJobTitleRepository(),          // IJobTitleRepository
+                new FakeHasher(),                      // IPasswordHasher
+                new Mock<ILogger<UpdateEmployeeCommandHandler>>().Object); // ILogger
 
             var cmd = MakeCommand(employee.Id, deptId, "jane.doe@company.com", "52998224725"); // sem telefones
 
@@ -321,12 +323,12 @@ namespace CompanyManager.UnitTest.Application.Handlers
             var departments = new StubDepartmentRepository(new[] { deptId });
             var userAccounts = new InMemoryUserAccountRepository();
             var handler = new UpdateEmployeeCommandHandler(
-                employees, 
-                departments, 
-                new StubJobTitleRepository(), 
-                userAccounts, 
-                new FakeHasher(), 
-                CreateValidator());
+                employees,                              // IEmployeeRepository
+                userAccounts,                           // IUserAccountRepository  
+                departments,                            // IDepartmentRepository
+                new StubJobTitleRepository(),          // IJobTitleRepository
+                new FakeHasher(),                      // IPasswordHasher
+                new Mock<ILogger<UpdateEmployeeCommandHandler>>().Object); // ILogger
 
             var cmd = MakeCommand(employee.Id, deptId, "jane.doe@company.com", "52998224725", "11 99999-9999");
             cmd.Password = "NewPassword123!";
@@ -347,12 +349,12 @@ namespace CompanyManager.UnitTest.Application.Handlers
             var departments = new StubDepartmentRepository(new[] { deptId });
             var userAccounts = new InMemoryUserAccountRepository();
             var handler = new UpdateEmployeeCommandHandler(
-                employees, 
-                departments, 
-                new StubJobTitleRepository(), 
-                userAccounts, 
-                new FakeHasher(), 
-                CreateValidator());
+                employees,                              // IEmployeeRepository
+                userAccounts,                           // IUserAccountRepository  
+                departments,                            // IDepartmentRepository
+                new StubJobTitleRepository(),          // IJobTitleRepository
+                new FakeHasher(),                      // IPasswordHasher
+                new Mock<ILogger<UpdateEmployeeCommandHandler>>().Object); // ILogger
 
             var cmd = MakeCommand(employee.Id, deptId, "jane.doe@company.com", "52998224725", "11 99999-9999");
             // cmd.Password não é definido

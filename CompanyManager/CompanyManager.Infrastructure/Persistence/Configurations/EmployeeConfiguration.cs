@@ -69,6 +69,15 @@ namespace CompanyManager.Infrastructure.Persistence.Configurations
             builder.HasIndex(e => e.JobTitleId)
                 .HasDatabaseName("IX_Employees_JobTitleId");
 
+            // ÍNDICES ÚNICOS CRÍTICOS para evitar duplicatas
+            builder.HasIndex(e => e.Email)
+                .IsUnique()
+                .HasDatabaseName("IX_Employees_Email_Unique");
+            
+            builder.HasIndex(e => e.DocumentNumber)
+                .IsUnique()
+                .HasDatabaseName("IX_Employees_DocumentNumber_Unique");
+
             // Relacionamentos
             builder.HasOne(e => e.JobTitle)
                 .WithMany(jt => jt.Employees)

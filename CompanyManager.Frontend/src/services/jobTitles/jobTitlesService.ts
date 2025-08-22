@@ -36,7 +36,6 @@ class JobTitlesService {
             const response = await httpClient.get<JobTitleListResponse>(this.baseUrl, { params });
             return response.data;
         } catch (error) {
-            console.error('Erro ao buscar cargos:', error);
             throw new Error('Erro ao carregar cargos');
         }
     }
@@ -46,7 +45,6 @@ class JobTitlesService {
             const response = await httpClient.get<JobTitle>(`${this.baseUrl}/${id}`);
             return response.data;
         } catch (error) {
-            console.error('Erro ao buscar cargo:', error);
             throw new Error('Erro ao carregar cargo');
         }
     }
@@ -56,7 +54,6 @@ class JobTitlesService {
             const response = await httpClient.get<JobTitle[]>(`${this.baseUrl}/available-for-creation`);
             return response.data;
         } catch (error) {
-            console.error('Erro ao buscar cargos disponíveis:', error);
             throw new Error('Erro ao carregar cargos disponíveis');
         }
     }

@@ -5,7 +5,6 @@ namespace CompanyManager.API.Models.Responses
     public class AuthenticationResponse : BaseResponse
     {
         public string AccessToken { get; set; } = string.Empty;
-        public string? RefreshToken { get; set; }
         public DateTime ExpiresAt { get; set; }
         public string TokenType { get; set; } = string.Empty;
         public UserInfo? User { get; set; }
@@ -35,10 +34,24 @@ namespace CompanyManager.API.Models.Responses
         public string? LastName { get; set; }
         public bool IsActive { get; set; }
         public DateTime LastLoginAt { get; set; }
+        public UserJobTitleInfo? JobTitle { get; set; }
+        public RoleInfo? Role { get; set; }
     }
 
-    public class LogoutRequest
+    public class UserJobTitleInfo
     {
-        public string? RefreshToken { get; set; }
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public int HierarchyLevel { get; set; }
+        public string Description { get; set; } = string.Empty;
     }
+
+    public class RoleInfo
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Level { get; set; } = string.Empty;
+    }
+
+
 }

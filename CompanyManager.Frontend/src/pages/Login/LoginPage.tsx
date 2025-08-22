@@ -18,8 +18,7 @@ const LoginPage: React.FC = () => {
         try {
             await login({ email, password });
         } catch (error) {
-            // O erro já é tratado no hook useAuth
-            console.error('Erro no login:', error);
+            // Error is already handled in useAuth hook
         }
     };
 
@@ -46,7 +45,7 @@ const LoginPage: React.FC = () => {
 
                     <div>
                         <label className="block text-sm font-medium text-black mb-2">
-                            Senha
+                            Password
                         </label>
                         <input
                             type="password"
@@ -65,12 +64,12 @@ const LoginPage: React.FC = () => {
                             : 'bg-blue-600 hover:bg-blue-700'
                             } text-white`}
                     >
-                        {isLoading ? 'Entrando...' : 'Entrar'}
+                        {isLoading ? 'Signing in...' : 'Sign In'}
                     </button>
                 </form>
 
                 <p className="text-xs text-black text-center mt-4">
-                    Credenciais: admin@companymanager.com / Admin123!
+                    Credentials: admin@companymanager.com / Admin123!
                 </p>
             </div>
         </div>

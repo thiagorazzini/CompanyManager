@@ -30,7 +30,7 @@ namespace CompanyManager.UnitTest.Entities
                 new Email(email),
                 new DocumentNumber(documentNumber),
                 new DateOfBirth(dob),
-                phoneNumbers.Select(p => new PhoneNumber(p)),
+                phoneNumbers,
                 Guid.NewGuid(),
                 Guid.NewGuid());
         }
@@ -51,7 +51,7 @@ namespace CompanyManager.UnitTest.Entities
             emp.DocumentNumber.Raw.Should().Be("12345678901");
             emp.DateOfBirth.BirthDate.Should().Be(new DateTime(1990, 1, 1));
             emp.Phones.Should().HaveCount(1);
-            emp.Phones.First().E164.Should().Be("+5511999999999");
+            emp.Phones.First().PhoneNumber.E164.Should().Be("+5511999999999");
             emp.JobTitleId.Should().Be(Guid.NewGuid());
             emp.DepartmentId.Should().Be(Guid.NewGuid());
             emp.HasManager.Should().BeFalse();
@@ -68,7 +68,7 @@ namespace CompanyManager.UnitTest.Entities
         public void Should_Reject_Invalid_Names(string first, string last)
         {
             Action act = () => Employee.Create(
-                first, last, EmailOf(), Cpf(), DobYearsAgo(), new[] { BrMobile() }, Guid.NewGuid(), Dept());
+                first, last, EmailOf(), Cpf(), DobYearsAgo(), new[] { "11999999999" }, Guid.NewGuid(), Dept());
 
             act.Should().Throw<ArgumentException>().WithMessage("*name*");
         }
@@ -77,7 +77,7 @@ namespace CompanyManager.UnitTest.Entities
         public void Should_Require_AtLeast_One_Phone()
         {
             Action act = () => Employee.Create(
-                "John", "Doe", EmailOf(), Cpf(), DobYearsAgo(), Array.Empty<PhoneNumber>(), Guid.NewGuid(), Dept());
+                "John", "Doe", EmailOf(), Cpf(), DobYearsAgo(), Array.Empty<string>(), Guid.NewGuid(), Dept());
 
             act.Should().Throw<ArgumentException>().WithMessage("*phone*");
         }
@@ -90,7 +90,7 @@ namespace CompanyManager.UnitTest.Entities
             var emp = NewEmployee();
             var sameNumberDifferentMask = new PhoneNumber("+55 11 99999-9999");
 
-            Action act = () => emp.AddPhone(sameNumberDifferentMask);
+            Action act = () => emp.AddPhone(sameNumberDifferentMask.E164);
 
             act.Should().Throw<InvalidOperationException>().WithMessage("*duplicate*");
             emp.Phones.Should().HaveCount(1);
@@ -102,7 +102,7 @@ namespace CompanyManager.UnitTest.Entities
             var emp = NewEmployee();
             var only = emp.Phones.Single();
 
-            Action act = () => emp.RemovePhone(only);
+            Action act = () => emp.RemovePhone(only.Id);
 
             act.Should().Throw<InvalidOperationException>().WithMessage("*at least one phone*");
             emp.Phones.Should().ContainSingle();
@@ -114,13 +114,14 @@ namespace CompanyManager.UnitTest.Entities
             var emp = NewEmployee();
             var before = emp.UpdatedAt;
 
-            var another = new PhoneNumber("11987654321", defaultCountry: "BR");
-            emp.AddPhone(another);
+            var anotherPhoneNumber = "11987654321";
+            emp.AddPhone(anotherPhoneNumber);
             emp.Phones.Should().HaveCount(2);
             emp.UpdatedAt.Should().NotBe(before);
 
             before = emp.UpdatedAt;
-            emp.RemovePhone(another);
+            var phoneToRemove = emp.Phones.First(p => p.PhoneNumber.E164.Contains("987654321"));
+            emp.RemovePhone(phoneToRemove.Id);
             emp.Phones.Should().HaveCount(1);
             emp.UpdatedAt.Should().NotBe(before);
         }

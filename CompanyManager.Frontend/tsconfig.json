@@ -54,10 +54,7 @@
             ]
         },
         /* Testing */
-        "types": [
-            "jest",
-            "@testing-library/jest-dom"
-        ]
+        "types": []
     },
     "include": [
         "src",

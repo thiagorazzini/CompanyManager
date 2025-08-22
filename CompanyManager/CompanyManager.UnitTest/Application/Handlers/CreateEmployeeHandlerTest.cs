@@ -1,5 +1,6 @@
 using CompanyManager.Application.Commands;
 using CompanyManager.Application.Handlers;
+using CompanyManager.Application.Services;
 using CompanyManager.Application.Validators;
 using CompanyManager.Domain.AccessControl;
 using CompanyManager.Domain.Entities;
@@ -20,6 +21,9 @@ namespace CompanyManager.UnitTest.Application.Handlers
         private readonly Mock<IDepartmentRepository> _mockDepartmentRepository;
         private readonly Mock<IJobTitleRepository> _mockJobTitleRepository;
         private readonly Mock<IPasswordHasher> _mockPasswordHasher;
+        private readonly Mock<IHierarchicalAuthorizationService> _mockAuthorizationService;
+        private readonly Mock<IRoleManagementService> _mockRoleManagementService;
+        private readonly Mock<IEmployeeValidationService> _mockValidationService;
         private readonly Mock<ILogger<CreateEmployeeHandler>> _mockLogger;
         private readonly CreateEmployeeRequestValidator _validator;
         private readonly CreateEmployeeHandler _handler;
@@ -31,6 +35,9 @@ namespace CompanyManager.UnitTest.Application.Handlers
             _mockDepartmentRepository = new Mock<IDepartmentRepository>();
             _mockJobTitleRepository = new Mock<IJobTitleRepository>();
             _mockPasswordHasher = new Mock<IPasswordHasher>();
+            _mockAuthorizationService = new Mock<IHierarchicalAuthorizationService>();
+            _mockRoleManagementService = new Mock<IRoleManagementService>();
+            _mockValidationService = new Mock<IEmployeeValidationService>();
             _mockLogger = new Mock<ILogger<CreateEmployeeHandler>>();
             _validator = new CreateEmployeeRequestValidator();
 
@@ -38,9 +45,11 @@ namespace CompanyManager.UnitTest.Application.Handlers
                 _validator,
                 _mockEmployeeRepository.Object,
                 _mockUserRepository.Object,
-                _mockDepartmentRepository.Object,
                 _mockJobTitleRepository.Object,
                 _mockPasswordHasher.Object,
+                _mockAuthorizationService.Object,
+                _mockRoleManagementService.Object,
+                _mockValidationService.Object,
                 _mockLogger.Object);
         }
 
@@ -48,12 +57,23 @@ namespace CompanyManager.UnitTest.Application.Handlers
         public async Task Handle_ValidCommand_ShouldCreateEmployeeAndUserAccount()
         {
             // Arrange
-            var command = CreateEmployeeCommandBuilder.Build();
+            var command = new CreateEmployeeCommand
+            {
+                FirstName = "John",
+                LastName = "Doe",
+                Email = "john.doe@test.com",
+                DocumentNumber = "12345678901",
+                DateOfBirth = "1990-01-01",
+                Phones = new List<string> { "11999999999" },
+                JobTitleId = Guid.NewGuid(),
+                DepartmentId = Guid.NewGuid(),
+                Password = "TestPassword123!"
+            };
             var currentUserId = Guid.NewGuid();
             var currentUserRoleId = Guid.NewGuid();
             var currentUserRole = new Role("Manager", HierarchicalRole.Manager);
             
-            var currentUser = UserAccount.Create("manager@test.com", "hash", Guid.NewGuid(), currentUserRoleId);
+            var currentUser = UserAccount.Create("manager@test.com", "hash", Guid.NewGuid(), currentUserRoleId, Guid.NewGuid());
             var department = Department.Create("IT", "Information Technology");
             var jobTitle = JobTitle.Create("Developer", 4, "Software Developer"); // Nível 4 = Pleno
             var employee = Employee.Create("John", "Doe", new Email("john@test.com"), new DocumentNumber("12345678901"), 
@@ -83,7 +103,18 @@ namespace CompanyManager.UnitTest.Application.Handlers
         public async Task Handle_CurrentUserNotFound_ShouldThrowUnauthorizedAccessException()
         {
             // Arrange
-            var command = CreateEmployeeCommandBuilder.Build();
+            var command = new CreateEmployeeCommand
+            {
+                FirstName = "John",
+                LastName = "Doe",
+                Email = "john.doe@test.com",
+                DocumentNumber = "12345678901",
+                DateOfBirth = "1990-01-01",
+                Phones = new List<string> { "11999999999" },
+                JobTitleId = Guid.NewGuid(),
+                DepartmentId = Guid.NewGuid(),
+                Password = "TestPassword123!"
+            };
             var currentUserId = Guid.NewGuid();
 
             _mockUserRepository.Setup(x => x.GetByIdAsync(currentUserId, It.IsAny<CancellationToken>()))
@@ -98,9 +129,20 @@ namespace CompanyManager.UnitTest.Application.Handlers
         public async Task Handle_CurrentUserRoleNotFound_ShouldThrowUnauthorizedAccessException()
         {
             // Arrange
-            var command = CreateEmployeeCommandBuilder.Build();
+            var command = new CreateEmployeeCommand
+            {
+                FirstName = "John",
+                LastName = "Doe",
+                Email = "john.doe@test.com",
+                DocumentNumber = "12345678901",
+                DateOfBirth = "1990-01-01",
+                Phones = new List<string> { "11999999999" },
+                JobTitleId = Guid.NewGuid(),
+                DepartmentId = Guid.NewGuid(),
+                Password = "TestPassword123!"
+            };
             var currentUserId = Guid.NewGuid();
-            var currentUser = UserAccount.Create("user@test.com", "hash", Guid.NewGuid(), Guid.NewGuid());
+            var currentUser = UserAccount.Create("user@test.com", "hash", Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
 
             _mockUserRepository.Setup(x => x.GetByIdAsync(currentUserId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(currentUser);
@@ -114,12 +156,23 @@ namespace CompanyManager.UnitTest.Application.Handlers
         public async Task Handle_UserCannotCreateHigherRole_ShouldThrowUnauthorizedAccessException()
         {
             // Arrange
-            var command = CreateEmployeeCommandBuilder.Build();
+            var command = new CreateEmployeeCommand
+            {
+                FirstName = "John",
+                LastName = "Doe",
+                Email = "john.doe@test.com",
+                DocumentNumber = "12345678901",
+                DateOfBirth = "1990-01-01",
+                Phones = new List<string> { "11999999999" },
+                JobTitleId = Guid.NewGuid(),
+                DepartmentId = Guid.NewGuid(),
+                Password = "TestPassword123!"
+            };
             var currentUserId = Guid.NewGuid();
             var currentUserRoleId = Guid.NewGuid();
             var currentUserRole = new Role("Junior", HierarchicalRole.Junior);
             
-            var currentUser = UserAccount.Create("junior@test.com", "hash", Guid.NewGuid(), currentUserRoleId);
+            var currentUser = UserAccount.Create("junior@test.com", "hash", Guid.NewGuid(), currentUserRoleId, Guid.NewGuid());
             var department = Department.Create("IT", "Information Technology");
             var jobTitle = JobTitle.Create("Director", 1, "Company Director"); // Nível 1 = Director (mais alto que Junior)
 
@@ -139,12 +192,23 @@ namespace CompanyManager.UnitTest.Application.Handlers
         public async Task Handle_UserCanCreateLowerRole_ShouldSucceed()
         {
             // Arrange
-            var command = CreateEmployeeCommandBuilder.Build();
+            var command = new CreateEmployeeCommand
+            {
+                FirstName = "John",
+                LastName = "Doe",
+                Email = "john.doe@test.com",
+                DocumentNumber = "12345678901",
+                DateOfBirth = "1990-01-01",
+                Phones = new List<string> { "11999999999" },
+                JobTitleId = Guid.NewGuid(),
+                DepartmentId = Guid.NewGuid(),
+                Password = "TestPassword123!"
+            };
             var currentUserId = Guid.NewGuid();
             var currentUserRoleId = Guid.NewGuid();
             var currentUserRole = new Role("Manager", HierarchicalRole.Manager);
             
-            var currentUser = UserAccount.Create("manager@test.com", "hash", Guid.NewGuid(), currentUserRoleId);
+            var currentUser = UserAccount.Create("manager@test.com", "hash", Guid.NewGuid(), currentUserRoleId, Guid.NewGuid());
             var department = Department.Create("IT", "Information Technology");
             var jobTitle = JobTitle.Create("Developer", 5, "Software Developer"); // Nível 5 = Junior (mais baixo que Manager)
             var employee = Employee.Create("John", "Doe", new Email("john@test.com"), new DocumentNumber("12345678901"), 
@@ -172,12 +236,23 @@ namespace CompanyManager.UnitTest.Application.Handlers
         public async Task Handle_SuperUserCanCreateAnyRole_ShouldSucceed()
         {
             // Arrange
-            var command = CreateEmployeeCommandBuilder.Build();
+            var command = new CreateEmployeeCommand
+            {
+                FirstName = "John",
+                LastName = "Doe",
+                Email = "john.doe@test.com",
+                DocumentNumber = "12345678901",
+                DateOfBirth = "1990-01-01",
+                Phones = new List<string> { "11999999999" },
+                JobTitleId = Guid.NewGuid(),
+                DepartmentId = Guid.NewGuid(),
+                Password = "TestPassword123!"
+            };
             var currentUserId = Guid.NewGuid();
             var currentUserRoleId = Guid.NewGuid();
             var currentUserRole = new Role("SuperUser", HierarchicalRole.SuperUser);
             
-            var currentUser = UserAccount.Create("superuser@test.com", "hash", Guid.NewGuid(), currentUserRoleId);
+            var currentUser = UserAccount.Create("superuser@test.com", "hash", Guid.NewGuid(), currentUserRoleId, Guid.NewGuid());
             var department = Department.Create("IT", "Information Technology");
             var jobTitle = JobTitle.Create("Director", 1, "Company Director"); // Nível 1 = Director
             var employee = Employee.Create("John", "Doe", new Email("john@test.com"), new DocumentNumber("12345678901"), 
@@ -205,13 +280,24 @@ namespace CompanyManager.UnitTest.Application.Handlers
         public async Task Handle_EmailAlreadyInUse_ShouldThrowArgumentException()
         {
             // Arrange
-            var command = CreateEmployeeCommandBuilder.Build();
+            var command = new CreateEmployeeCommand
+            {
+                FirstName = "John",
+                LastName = "Doe",
+                Email = "john.doe@test.com",
+                DocumentNumber = "12345678901",
+                DateOfBirth = "1990-01-01",
+                Phones = new List<string> { "11999999999" },
+                JobTitleId = Guid.NewGuid(),
+                DepartmentId = Guid.NewGuid(),
+                Password = "TestPassword123!"
+            };
             var currentUserId = Guid.NewGuid();
             var currentUserRoleId = Guid.NewGuid();
             var currentUserRole = new Role("Manager", HierarchicalRole.Manager);
             
-            var currentUser = UserAccount.Create("manager@test.com", "hash", Guid.NewGuid(), currentUserRoleId);
-            var existingUser = UserAccount.Create("john@test.com", "hash", Guid.NewGuid(), Guid.NewGuid());
+            var currentUser = UserAccount.Create("manager@test.com", "hash", Guid.NewGuid(), currentUserRoleId, Guid.NewGuid());
+            var existingUser = UserAccount.Create("john@test.com", "hash", Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
 
             _mockUserRepository.Setup(x => x.GetByIdAsync(currentUserId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(currentUser);
@@ -227,12 +313,23 @@ namespace CompanyManager.UnitTest.Application.Handlers
         public async Task Handle_DepartmentNotFound_ShouldThrowArgumentException()
         {
             // Arrange
-            var command = CreateEmployeeCommandBuilder.Build();
+            var command = new CreateEmployeeCommand
+            {
+                FirstName = "John",
+                LastName = "Doe",
+                Email = "john.doe@test.com",
+                DocumentNumber = "12345678901",
+                DateOfBirth = "1990-01-01",
+                Phones = new List<string> { "11999999999" },
+                JobTitleId = Guid.NewGuid(),
+                DepartmentId = Guid.NewGuid(),
+                Password = "TestPassword123!"
+            };
             var currentUserId = Guid.NewGuid();
             var currentUserRoleId = Guid.NewGuid();
             var currentUserRole = new Role("Manager", HierarchicalRole.Manager);
             
-            var currentUser = UserAccount.Create("manager@test.com", "hash", Guid.NewGuid(), currentUserRoleId);
+            var currentUser = UserAccount.Create("manager@test.com", "hash", Guid.NewGuid(), currentUserRoleId, Guid.NewGuid());
 
             _mockUserRepository.Setup(x => x.GetByIdAsync(currentUserId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(currentUser);
@@ -250,12 +347,23 @@ namespace CompanyManager.UnitTest.Application.Handlers
         public async Task Handle_JobTitleNotFound_ShouldThrowArgumentException()
         {
             // Arrange
-            var command = CreateEmployeeCommandBuilder.Build();
+            var command = new CreateEmployeeCommand
+            {
+                FirstName = "John",
+                LastName = "Doe",
+                Email = "john.doe@test.com",
+                DocumentNumber = "12345678901",
+                DateOfBirth = "1990-01-01",
+                Phones = new List<string> { "11999999999" },
+                JobTitleId = Guid.NewGuid(),
+                DepartmentId = Guid.NewGuid(),
+                Password = "TestPassword123!"
+            };
             var currentUserId = Guid.NewGuid();
             var currentUserRoleId = Guid.NewGuid();
             var currentUserRole = new Role("Manager", HierarchicalRole.Manager);
             
-            var currentUser = UserAccount.Create("manager@test.com", "hash", Guid.NewGuid(), currentUserRoleId);
+            var currentUser = UserAccount.Create("manager@test.com", "hash", Guid.NewGuid(), currentUserRoleId, Guid.NewGuid());
             var department = Department.Create("IT", "Information Technology");
 
             _mockUserRepository.Setup(x => x.GetByIdAsync(currentUserId, It.IsAny<CancellationToken>()))

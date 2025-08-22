@@ -19,20 +19,35 @@ namespace CompanyManager.Infrastructure.Persistence
 
         public async Task InitializeAsync(CancellationToken cancellationToken = default)
         {
-            try
+            const int maxRetries = 5;
+            const int delaySeconds = 10;
+            
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
             {
-                using var scope = _serviceProvider.CreateScope();
-                var context = scope.ServiceProvider.GetRequiredService<CompanyContext>();
-                var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
+                try
+                {
+                    using var scope = _serviceProvider.CreateScope();
+                    var context = scope.ServiceProvider.GetRequiredService<CompanyContext>();
+                    var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
 
-                _logger.LogInformation("Initializing database...");
-                await DatabaseInitializer.InitializeAsync(context, passwordHasher);
-                _logger.LogInformation("Database initialized successfully!");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error initializing database");
-                throw;
+                    _logger.LogInformation("Initializing database... Attempt {Attempt}/{MaxRetries}", attempt, maxRetries);
+                    await DatabaseInitializer.InitializeAsync(context, passwordHasher);
+                    _logger.LogInformation("Database initialized successfully!");
+                    return; // Sucesso, sair do loop
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error initializing database on attempt {Attempt}/{MaxRetries}", attempt, maxRetries);
+                    
+                    if (attempt == maxRetries)
+                    {
+                        _logger.LogError(ex, "Failed to initialize database after {MaxRetries} attempts", maxRetries);
+                        throw; // Última tentativa falhou, re-throw
+                    }
+                    
+                    _logger.LogInformation("Waiting {DelaySeconds} seconds before retry...", delaySeconds);
+                    await Task.Delay(TimeSpan.FromSeconds(delaySeconds), cancellationToken);
+                }
             }
         }
 

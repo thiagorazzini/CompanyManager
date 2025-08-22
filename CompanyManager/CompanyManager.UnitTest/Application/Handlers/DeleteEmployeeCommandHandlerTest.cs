@@ -21,7 +21,7 @@ namespace CompanyManager.UnitTest.Application.Handlers
                 email: new Email("john.doe@company.com"),
                 documentNumber: new DocumentNumber("52998224725"),
                 dateOfBirth: new DateOfBirth(DateTime.Today.AddYears(-30)),
-                phones: new[] { new PhoneNumber("11 91111-1111", "BR") },
+                phoneNumbers: new[] { "11 91111-1111" },
                 jobTitleId: Guid.NewGuid(),
                 departmentId: deptId
             );

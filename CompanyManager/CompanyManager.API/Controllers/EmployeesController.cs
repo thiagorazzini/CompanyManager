@@ -54,6 +54,7 @@ namespace CompanyManager.API.Controllers
         [HttpGet]
         [ProducesResponseType(typeof(EmployeeListResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetEmployees(
             CancellationToken cancellationToken,
             [FromQuery] string? nameContains = null,
@@ -66,7 +67,8 @@ namespace CompanyManager.API.Controllers
             {
                 if (page < 1 || pageSize < 1 || pageSize > 100)
                 {
-                    return BadRequest(new ErrorResponse("Invalid pagination parameters"));
+                    _logger.LogWarning("Invalid pagination parameters: Page={Page}, PageSize={PageSize}", page, pageSize);
+                    return BadRequest(new ErrorResponse("Invalid pagination parameters. Page must be 1 or greater, and page size must be between 1 and 100."));
                 }
 
                 var request = new ListEmployeesRequest
@@ -102,12 +104,20 @@ namespace CompanyManager.API.Controllers
                     }
                 };
 
+                _logger.LogInformation("Employees list retrieved successfully. Total: {Total}, Page: {Page}, PageSize: {PageSize}", 
+                    result.Total, page, pageSize);
+
                 return Ok(response);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("Employees list retrieval operation cancelled");
+                return StatusCode(499, new ErrorResponse("Request was cancelled. Please try again."));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving employees list");
-                return StatusCode(500, new ErrorResponse("An error occurred while retrieving employees"));
+                _logger.LogError(ex, "Unexpected error while retrieving employees list");
+                return StatusCode(500, new ErrorResponse("We're experiencing technical difficulties. Please try again in a few moments."));
             }
         }
 
@@ -120,6 +130,7 @@ namespace CompanyManager.API.Controllers
         [HttpGet("{id:guid}")]
         [ProducesResponseType(typeof(EmployeeDetailDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetEmployee(Guid id, CancellationToken cancellationToken)
         {
             try
@@ -132,7 +143,7 @@ namespace CompanyManager.API.Controllers
                 if (result == null)
                 {
                     _logger.LogWarning("Employee not found with ID: {EmployeeId}", id);
-                    return NotFound(new ErrorResponse("Employee not found"));
+                    return NotFound(new ErrorResponse("Employee not found. Please check the ID and try again."));
                 }
 
                 var response = new EmployeeDetailDto
@@ -158,10 +169,15 @@ namespace CompanyManager.API.Controllers
 
                 return Ok(response);
             }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("Employee retrieval operation cancelled for ID: {EmployeeId}", id);
+                return StatusCode(499, new ErrorResponse("Request was cancelled. Please try again."));
+            }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving employee ID: {EmployeeId}", id);
-                return StatusCode(500, new ErrorResponse("An error occurred while retrieving the employee"));
+                _logger.LogError(ex, "Unexpected error while retrieving employee with ID: {EmployeeId}", id);
+                return StatusCode(500, new ErrorResponse("We're experiencing technical difficulties. Please try again in a few moments."));
             }
         }
 
@@ -175,12 +191,35 @@ namespace CompanyManager.API.Controllers
         [ProducesResponseType(typeof(EmployeeCreatedResponse), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ValidationErrorResponse), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> CreateEmployee(
             [FromBody] CreateEmployeeRequest request,
             CancellationToken cancellationToken)
         {
             if (request == null)
-                return BadRequest(new ErrorResponse("Request body is required"));
+            {
+                _logger.LogWarning("Employee creation attempt with null request body");
+                return BadRequest(new ErrorResponse("Employee data is required"));
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Email))
+            {
+                _logger.LogWarning("Employee creation attempt with empty email");
+                return BadRequest(new ErrorResponse("Employee email is required"));
+            }
+
+            if (string.IsNullOrWhiteSpace(request.FirstName))
+            {
+                _logger.LogWarning("Employee creation attempt with empty first name");
+                return BadRequest(new ErrorResponse("Employee first name is required"));
+            }
+
+            if (string.IsNullOrWhiteSpace(request.LastName))
+            {
+                _logger.LogWarning("Employee creation attempt with empty last name");
+                return BadRequest(new ErrorResponse("Employee last name is required"));
+            }
 
             _logger.LogInformation("Creating employee with email: {Email}", request.Email);
             
@@ -204,7 +243,7 @@ namespace CompanyManager.API.Controllers
                 if (string.IsNullOrEmpty(currentUserId) || !Guid.TryParse(currentUserId, out var userId))
                 {
                     _logger.LogError("Unable to extract user ID from JWT token");
-                    return Unauthorized(new ErrorResponse("Invalid authentication token"));
+                    return Unauthorized(new ErrorResponse("Invalid authentication token. Please log in again."));
                 }
                 
                 var result = await _createEmployeeHandler.Handle(command, cancellationToken, userId);
@@ -225,22 +264,45 @@ namespace CompanyManager.API.Controllers
                 _logger.LogWarning("Validation failed when creating employee: {Email}. Errors: {Errors}", 
                     request.Email, string.Join(", ", ex.Errors.Select(e => e.ErrorMessage)));
                 
-                var response = new ValidationErrorResponse("Validation failed")
+                var response = new ValidationErrorResponse("Please check your input and try again")
                 {
                     Errors = ex.Errors.Select(e => e.ErrorMessage).ToList()
                 };
                 
                 return BadRequest(response);
             }
-            catch (InvalidOperationException ex) when (ex.Message.Contains("already exists"))
+            catch (InvalidOperationException ex) when (ex.Message.Contains("already exists", StringComparison.OrdinalIgnoreCase))
             {
-                _logger.LogWarning("Employee already exists: {Email}", request.Email);
-                return Conflict(new ErrorResponse("An employee with this email already exists"));
+                _logger.LogWarning("Employee creation failed - email already exists: {Email}", request.Email);
+                return Conflict(new ErrorResponse("An employee with this email already exists. Please use a different email address."));
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("hierarchical", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("Employee creation failed - hierarchical validation failed: {Email}, Error: {Error}", 
+                    request.Email, ex.Message);
+                return BadRequest(new ErrorResponse("You cannot create an employee with a job title equal to or higher than your current level."));
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("department", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("Employee creation failed - department validation failed: {Email}, Error: {Error}", 
+                    request.Email, ex.Message);
+                return BadRequest(new ErrorResponse("The specified department does not exist or is not active."));
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("job title", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("Employee creation failed - job title validation failed: {Email}, Error: {Error}", 
+                    request.Email, ex.Message);
+                return BadRequest(new ErrorResponse("The specified job title does not exist or is not active."));
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("Employee creation operation cancelled for email: {Email}", request.Email);
+                return StatusCode(499, new ErrorResponse("Request was cancelled. Please try again."));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error when creating employee: {Email}", request.Email);
-                return StatusCode(500, new ErrorResponse("An error occurred while creating the employee"));
+                return StatusCode(500, new ErrorResponse("We're experiencing technical difficulties. Please try again in a few moments."));
             }
         }
 
@@ -256,24 +318,47 @@ namespace CompanyManager.API.Controllers
         [ProducesResponseType(typeof(ValidationErrorResponse), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> UpdateEmployee(
             Guid id,
             [FromBody] UpdateEmployeeRequest request,
             CancellationToken cancellationToken)
         {
             if (request == null)
-                return BadRequest(new ErrorResponse("Request body is required"));
+            {
+                _logger.LogWarning("Employee update attempt with null request body for ID: {EmployeeId}", id);
+                return BadRequest(new ErrorResponse("Employee update data is required"));
+            }
 
-            _logger.LogInformation("Updating employee ID: {EmployeeId}, Email: {Email}", id, request.Email ?? "null");
+            if (string.IsNullOrWhiteSpace(request.Email))
+            {
+                _logger.LogWarning("Employee update attempt with empty email for ID: {EmployeeId}", id);
+                return BadRequest(new ErrorResponse("Employee email is required"));
+            }
+
+            if (string.IsNullOrWhiteSpace(request.FirstName))
+            {
+                _logger.LogWarning("Employee update attempt with empty first name for ID: {EmployeeId}", id);
+                return BadRequest(new ErrorResponse("Employee first name is required"));
+            }
+
+            if (string.IsNullOrWhiteSpace(request.LastName))
+            {
+                _logger.LogWarning("Employee update attempt with empty last name for ID: {EmployeeId}", id);
+                return BadRequest(new ErrorResponse("Employee last name is required"));
+            }
+
+            _logger.LogInformation("Updating employee ID: {EmployeeId}, Email: {Email}", id, request.Email);
             
             try
             {
                 var command = new UpdateEmployeeCommand
                 {
                     Id = id,
-                    FirstName = request.FirstName ?? string.Empty,
-                    LastName = request.LastName ?? string.Empty,
-                    Email = request.Email ?? string.Empty,
+                    FirstName = request.FirstName,
+                    LastName = request.LastName,
+                    Email = request.Email,
                     DocumentNumber = request.DocumentNumber ?? string.Empty,
                     Phones = request.PhoneNumbers?.ToList() ?? new List<string>(),
                     JobTitleId = request.JobTitleId,
@@ -285,8 +370,8 @@ namespace CompanyManager.API.Controllers
                 var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
                 if (string.IsNullOrEmpty(currentUserId) || !Guid.TryParse(currentUserId, out var userId))
                 {
-                    _logger.LogError("Unable to extract user ID from JWT token");
-                    return Unauthorized(new ErrorResponse("Invalid authentication token"));
+                    _logger.LogError("Unable to extract user ID from JWT token for employee update ID: {EmployeeId}", id);
+                    return Unauthorized(new ErrorResponse("Invalid authentication token. Please log in again."));
                 }
 
                 await _updateEmployeeHandler.Handle(command, cancellationToken, userId);
@@ -305,34 +390,51 @@ namespace CompanyManager.API.Controllers
                 _logger.LogWarning("Validation failed when updating employee ID: {EmployeeId}. Errors: {Errors}", 
                     id, string.Join(", ", ex.Errors.Select(e => e.ErrorMessage)));
                 
-                var response = new ValidationErrorResponse("Validation failed")
+                var response = new ValidationErrorResponse("Please check your input and try again")
                 {
                     Errors = ex.Errors.Select(e => e.ErrorMessage).ToList()
                 };
                 
                 return BadRequest(response);
             }
-            catch (ArgumentException ex) when (ex.Message.Contains("Employee not found"))
+            catch (ArgumentException ex) when (ex.Message.Contains("Employee not found", StringComparison.OrdinalIgnoreCase))
             {
-                _logger.LogWarning("Employee not found for update. ID: {EmployeeId}", id);
-                return NotFound(new ErrorResponse("Employee not found"));
+                _logger.LogWarning("Employee update failed - employee not found. ID: {EmployeeId}", id);
+                return NotFound(new ErrorResponse("Employee not found. Please check the ID and try again."));
             }
-            catch (ArgumentException ex) when (ex.Message.Contains("Department does not exist"))
+            catch (ArgumentException ex) when (ex.Message.Contains("Department does not exist", StringComparison.OrdinalIgnoreCase))
             {
-                _logger.LogWarning("Department does not exist for employee ID: {EmployeeId}. DepartmentId: {DepartmentId}", 
+                _logger.LogWarning("Employee update failed - department does not exist. ID: {EmployeeId}, DepartmentId: {DepartmentId}", 
                     id, request.DepartmentId);
-                return BadRequest(new ErrorResponse("Department does not exist"));
+                return BadRequest(new ErrorResponse("The specified department does not exist. Please choose a valid department."));
             }
-            catch (InvalidOperationException ex) when (ex.Message.Contains("already in use"))
+            catch (ArgumentException ex) when (ex.Message.Contains("Job title does not exist", StringComparison.OrdinalIgnoreCase))
             {
-                _logger.LogWarning("Conflict when updating employee ID: {EmployeeId}. Error: {Error}", 
+                _logger.LogWarning("Employee update failed - job title does not exist. ID: {EmployeeId}, JobTitleId: {JobTitleId}", 
+                    id, request.JobTitleId);
+                return BadRequest(new ErrorResponse("The specified job title does not exist. Please choose a valid job title."));
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("already in use", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("Employee update failed - email already in use. ID: {EmployeeId}, Email: {Email}, Error: {Error}", 
+                    id, request.Email, ex.Message);
+                return Conflict(new ErrorResponse("This email is already in use by another employee. Please choose a different email address."));
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("hierarchical", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("Employee update failed - hierarchical validation failed. ID: {EmployeeId}, Error: {Error}", 
                     id, ex.Message);
-                return Conflict(new ErrorResponse(ex.Message));
+                return BadRequest(new ErrorResponse("You cannot assign a job title equal to or higher than your current level."));
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("Employee update operation cancelled for ID: {EmployeeId}", id);
+                return StatusCode(499, new ErrorResponse("Request was cancelled. Please try again."));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error when updating employee ID: {EmployeeId}", id);
-                return StatusCode(500, new ErrorResponse("An error occurred while updating the employee"));
+                return StatusCode(500, new ErrorResponse("We're experiencing technical difficulties. Please try again in a few moments."));
             }
         }
 
@@ -345,6 +447,8 @@ namespace CompanyManager.API.Controllers
         [HttpDelete("{id:guid}")]
         [ProducesResponseType(typeof(EmployeeDeletedResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> DeleteEmployee(Guid id, CancellationToken cancellationToken)
         {
             try
@@ -363,17 +467,39 @@ namespace CompanyManager.API.Controllers
 
                 return Ok(response);
             }
-            catch (ArgumentException ex) when (ex.Message.Contains("Employee not found"))
+            catch (ArgumentException ex) when (ex.Message.Contains("Employee not found", StringComparison.OrdinalIgnoreCase))
             {
-                _logger.LogWarning("Employee not found for deletion. ID: {EmployeeId}", id);
-                return NotFound(new ErrorResponse("Employee not found"));
+                _logger.LogWarning("Employee deletion failed - employee not found. ID: {EmployeeId}", id);
+                return NotFound(new ErrorResponse("Employee not found. Please check the ID and try again."));
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("cannot be deleted", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("Employee deletion failed - cannot be deleted. ID: {EmployeeId}, Error: {Error}", 
+                    id, ex.Message);
+                
+                if (ex.Message.Contains("active", StringComparison.OrdinalIgnoreCase))
+                {
+                    return BadRequest(new ErrorResponse("This employee cannot be deleted because they are currently active. Please deactivate them first."));
+                }
+                else if (ex.Message.Contains("in use", StringComparison.OrdinalIgnoreCase))
+                {
+                    return BadRequest(new ErrorResponse("This employee cannot be deleted because they are currently in use by the system. Please contact support for assistance."));
+                }
+                else
+                {
+                    return BadRequest(new ErrorResponse(ex.Message));
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("Employee deletion operation cancelled for ID: {EmployeeId}", id);
+                return StatusCode(499, new ErrorResponse("Request was cancelled. Please try again."));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error when deleting employee ID: {EmployeeId}", id);
-                return StatusCode(500, new ErrorResponse("An error occurred while deleting the employee"));
+                return StatusCode(500, new ErrorResponse("We're experiencing technical difficulties. Please try again in a few moments."));
             }
         }
-
     }
 }

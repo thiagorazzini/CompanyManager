@@ -15,11 +15,6 @@ namespace CompanyManager.Application.Mapping.Profiles
                 .ForMember(dest => dest.Password, opt => opt.MapFrom(src => 
                     src.Password ?? string.Empty));
 
-            // RefreshTokenRequest → RefreshTokenCommand
-            CreateMap<RefreshTokenRequest, RefreshTokenCommand>()
-                .ForMember(dest => dest.RefreshToken, opt => opt.MapFrom(src => 
-                    string.IsNullOrWhiteSpace(src.RefreshToken) ? string.Empty : src.RefreshToken.Trim()));
-
             // ChangePasswordRequest → ChangePasswordCommand
             CreateMap<ChangePasswordRequest, ChangePasswordCommand>()
                 .ForMember(dest => dest.Email, opt => opt.MapFrom(src => 

@@ -8,178 +8,270 @@ using Microsoft.Extensions.Logging;
 
 namespace CompanyManager.Application.Handlers;
 
+/// <summary>
+/// Handles employee update operations with hierarchical validation
+/// </summary>
 public sealed class UpdateEmployeeCommandHandler : IUpdateEmployeeCommandHandler
 {
-    private readonly IEmployeeRepository _employees;
-    private readonly IUserAccountRepository _userAccounts;
-    private readonly IDepartmentRepository _departments;
-    private readonly IJobTitleRepository _jobTitles;
+    private readonly IEmployeeRepository _employeeRepository;
+    private readonly IUserAccountRepository _userAccountRepository;
+    private readonly IDepartmentRepository _departmentRepository;
+    private readonly IJobTitleRepository _jobTitleRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly ILogger<UpdateEmployeeCommandHandler> _logger;
 
     public UpdateEmployeeCommandHandler(
-        IEmployeeRepository employees,
-        IUserAccountRepository userAccounts,
-        IDepartmentRepository departments,
-        IJobTitleRepository jobTitles,
+        IEmployeeRepository employeeRepository,
+        IUserAccountRepository userAccountRepository,
+        IDepartmentRepository departmentRepository,
+        IJobTitleRepository jobTitleRepository,
         IPasswordHasher passwordHasher,
         ILogger<UpdateEmployeeCommandHandler> logger)
     {
-        _employees = employees;
-        _userAccounts = userAccounts;
-        _departments = departments;
-        _jobTitles = jobTitles;
-        _passwordHasher = passwordHasher;
-        _logger = logger;
-    }
-
-    public async Task Handle(UpdateEmployeeCommand cmd, CancellationToken ct, Guid? currentUserId = null)
-    {
-        if (currentUserId == null || currentUserId == Guid.Empty)
-            throw new UnauthorizedAccessException("Current user ID not provided.");
-
-        // 1) buscar o employee
-        var employee = await _employees.GetByIdAsync(cmd.Id, ct);
-        if (employee == null)
-            throw new ArgumentException("Employee not found.", nameof(cmd.Id));
-
-        // 2) buscar o usuário atual
-        var currentUser = await _userAccounts.GetByIdAsync(currentUserId.Value, ct);
-        if (currentUser == null)
-            throw new UnauthorizedAccessException("Current user not found.");
-
-        // 2.1) buscar a role do usuário atual para validação
-        var currentUserRole = await GetRoleByIdAsync(currentUser.RoleId, ct);
-        if (currentUserRole == null)
-            throw new UnauthorizedAccessException("Current user role not found.");
-
-        // 2.2) VALIDAÇÃO HIERÁRQUICA para mudança de JobTitle
-        if (cmd.JobTitleId != Guid.Empty && cmd.JobTitleId != employee.JobTitleId)
-        {
-            var newJobTitle = await _jobTitles.GetByIdAsync(cmd.JobTitleId, ct);
-            if (newJobTitle != null)
-            {
-                var targetHierarchicalRole = ConvertJobTitleLevelToHierarchicalRole(newJobTitle.HierarchyLevel);
-                
-                if (!currentUser.IsSuperUser(currentUserRole) && !currentUser.CanCreateRole(currentUserRole, targetHierarchicalRole))
-                {
-                    throw new UnauthorizedAccessException($"You cannot change JobTitle to '{targetHierarchicalRole}' level. Your role level is '{currentUserRole.Level}'.");
-                }
-            }
-        }
-
-        // 3) verificar existência do departamento
-        if (!await _departments.ExistsAsync(cmd.DepartmentId, ct))
-            throw new ArgumentException("Department does not exist.", nameof(cmd.DepartmentId));
-
-        // 4) verificar existência do job title
-        if (cmd.JobTitleId != Guid.Empty && !await _jobTitles.ExistsAsync(cmd.JobTitleId, ct))
-            throw new ArgumentException("Job title does not exist.", nameof(cmd.JobTitleId));
-
-        // 5) normalizações básicas
-        var incomingEmailNorm = (cmd.Email ?? string.Empty).Trim().ToLowerInvariant();
-        var currentEmailNorm = employee.Email.Value.Trim().ToLowerInvariant();
-
-        // 6) checar duplicidade de email somente se mudou
-        if (!string.Equals(incomingEmailNorm, currentEmailNorm, StringComparison.OrdinalIgnoreCase))
-        {
-            if (await _employees.EmailExistsAsync(incomingEmailNorm, ct))
-                throw new InvalidOperationException("Email already in use.");
-        }
-
-        // 7) checar duplicidade de CPF somente se mudou (usa VO para obter apenas dígitos)
-        var incomingDoc = new DocumentNumber(cmd.DocumentNumber ?? string.Empty);
-        if (!string.Equals(incomingDoc.Digits, employee.DocumentNumber.Digits, StringComparison.Ordinal))
-        {
-            if (await _employees.CpfExistsAsync(incomingDoc.Digits, ct))
-                throw new InvalidOperationException("Document number already in use.");
-        }
-
-        // 8) aplicar mudanças (VOs validam formatos)
-        employee.ChangeName(cmd.FirstName ?? string.Empty, cmd.LastName ?? string.Empty);
-        employee.ChangeEmail(new Email((cmd.Email ?? string.Empty).Trim()));
-        employee.ChangeDocument(new DocumentNumber((cmd.DocumentNumber ?? string.Empty).Trim()));
-        if (cmd.JobTitleId != Guid.Empty)
-        {
-            employee.ChangeJobTitle(cmd.JobTitleId);
-        }
-        employee.ChangeDepartment(cmd.DepartmentId);
-
-        // 9) sincronizar telefones (atualiza todos os telefones)
-        var requestedPhones = cmd.Phones ?? new List<string>();
-
-        if (requestedPhones.Count == 0)
-            throw new ArgumentException("At least one phone number is required.", nameof(cmd.Phones));
-
-        // Atualizar todos os telefones de uma vez
-        employee.UpdatePhones(requestedPhones);
-
-        // 10) atualizar senha se fornecida
-        if (!string.IsNullOrEmpty(cmd.Password))
-        {
-            // Buscar a UserAccount associada ao employee
-            var userAccount = await _userAccounts.GetByEmailAsync(employee.Email.Value, ct);
-            if (userAccount != null)
-            {
-                // Buscar a role do usuário alvo para validação
-                var targetUserRole = await GetRoleByIdAsync(userAccount.RoleId, ct);
-                if (targetUserRole != null)
-                {
-                    // VALIDAÇÃO HIERÁRQUICA para mudança de senha
-                    if (!currentUser.CanModifyUser(currentUserRole, userAccount, targetUserRole))
-                    {
-                        throw new UnauthorizedAccessException($"You cannot modify the password of a user with role level '{targetUserRole.Level}'. Your role level is '{currentUserRole.Level}'.");
-                    }
-
-                    // Hash da nova senha
-                    var newPasswordHash = _passwordHasher.Hash(cmd.Password);
-                    userAccount.ChangePassword(newPasswordHash);
-                    await _userAccounts.UpdateAsync(userAccount, ct);
-                }
-            }
-        }
-
-        // 11) persistir
-        await _employees.UpdateAsync(employee, ct);
+        _employeeRepository = employeeRepository ?? throw new ArgumentNullException(nameof(employeeRepository));
+        _userAccountRepository = userAccountRepository ?? throw new ArgumentNullException(nameof(userAccountRepository));
+        _departmentRepository = departmentRepository ?? throw new ArgumentNullException(nameof(departmentRepository));
+        _jobTitleRepository = jobTitleRepository ?? throw new ArgumentNullException(nameof(jobTitleRepository));
+        _passwordHasher = passwordHasher ?? throw new ArgumentNullException(nameof(passwordHasher));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <summary>
-    /// Converte JobTitle.HierarchyLevel para HierarchicalRole
+    /// Handles employee update with comprehensive validation and hierarchical authorization
+    /// </summary>
+    public async Task Handle(UpdateEmployeeCommand command, CancellationToken cancellationToken, Guid? currentUserId = null)
+    {
+        await ValidateInputAsync(command, currentUserId, cancellationToken);
+        
+        var employee = await GetEmployeeAsync(command.Id, cancellationToken);
+        var currentUser = await GetCurrentUserAsync(currentUserId!.Value, cancellationToken);
+        var currentUserRole = await GetRoleByIdAsync(currentUser.RoleId, cancellationToken);
+        
+        if (currentUserRole == null)
+            throw new UnauthorizedAccessException("Current user role not found.");
+        
+        await ValidateHierarchicalPermissionsAsync(command, employee, currentUser, currentUserRole, cancellationToken);
+        await ValidateBusinessRulesAsync(command, employee, cancellationToken);
+        
+        await UpdateEmployeeDataAsync(command, employee, currentUser, currentUserRole, cancellationToken);
+        await PersistChangesAsync(employee, cancellationToken);
+    }
+
+    private Task ValidateInputAsync(UpdateEmployeeCommand command, Guid? currentUserId, CancellationToken cancellationToken)
+    {
+        if (currentUserId == null || currentUserId == Guid.Empty)
+            throw new UnauthorizedAccessException("Current user ID not provided.");
+        
+        if (command == null)
+            throw new ArgumentNullException(nameof(command));
+        
+        return Task.CompletedTask;
+    }
+
+    private async Task<Employee> GetEmployeeAsync(Guid employeeId, CancellationToken cancellationToken)
+    {
+        var employee = await _employeeRepository.GetByIdAsync(employeeId, cancellationToken);
+        if (employee == null)
+            throw new ArgumentException("Employee not found.", nameof(employeeId));
+        
+        return employee;
+    }
+
+    private async Task<UserAccount> GetCurrentUserAsync(Guid currentUserId, CancellationToken cancellationToken)
+    {
+        var currentUser = await _userAccountRepository.GetByIdAsync(currentUserId, cancellationToken);
+        if (currentUser == null)
+            throw new UnauthorizedAccessException("Current user not found.");
+        
+        return currentUser;
+    }
+
+    private async Task ValidateHierarchicalPermissionsAsync(
+        UpdateEmployeeCommand command, 
+        Employee employee, 
+        UserAccount currentUser, 
+        Role currentUserRole, 
+        CancellationToken cancellationToken)
+    {
+        if (command.JobTitleId != Guid.Empty && command.JobTitleId != employee.JobTitleId)
+        {
+            await ValidateJobTitleChangeAsync(command.JobTitleId, currentUser, currentUserRole, cancellationToken);
+        }
+    }
+
+    private async Task ValidateJobTitleChangeAsync(Guid newJobTitleId, UserAccount currentUser, Role currentUserRole, CancellationToken cancellationToken)
+    {
+        var newJobTitle = await _jobTitleRepository.GetByIdAsync(newJobTitleId, cancellationToken);
+        if (newJobTitle != null)
+        {
+            var targetHierarchicalRole = ConvertJobTitleLevelToHierarchicalRole(newJobTitle.HierarchyLevel);
+            
+            if (!currentUser.IsSuperUser(currentUserRole) && !currentUser.CanCreateRole(currentUserRole, targetHierarchicalRole))
+            {
+                throw new UnauthorizedAccessException($"You cannot change JobTitle to '{targetHierarchicalRole}' level. Your role level is '{currentUserRole.Level}'.");
+            }
+        }
+    }
+
+    private Task ValidateBusinessRulesAsync(UpdateEmployeeCommand command, Employee employee, CancellationToken cancellationToken)
+    {
+        return Task.WhenAll(
+            ValidateDepartmentExistsAsync(command.DepartmentId, cancellationToken),
+            ValidateJobTitleExistsAsync(command.JobTitleId, cancellationToken),
+            ValidateEmailUniquenessAsync(command.Email, employee, cancellationToken),
+            ValidateDocumentUniquenessAsync(command.DocumentNumber, employee, cancellationToken)
+        );
+    }
+
+    private async Task ValidateDepartmentExistsAsync(Guid departmentId, CancellationToken cancellationToken)
+    {
+        if (!await _departmentRepository.ExistsAsync(departmentId, cancellationToken))
+            throw new ArgumentException("Department does not exist.", nameof(departmentId));
+    }
+
+    private async Task ValidateJobTitleExistsAsync(Guid jobTitleId, CancellationToken cancellationToken)
+    {
+        if (jobTitleId != Guid.Empty && !await _jobTitleRepository.ExistsAsync(jobTitleId, cancellationToken))
+            throw new ArgumentException("Job title does not exist.", nameof(jobTitleId));
+    }
+
+    private async Task ValidateEmailUniquenessAsync(string? newEmail, Employee employee, CancellationToken cancellationToken)
+    {
+        var incomingEmailNorm = (newEmail ?? string.Empty).Trim().ToLowerInvariant();
+        var currentEmailNorm = employee.Email.Value.Trim().ToLowerInvariant();
+
+        if (!string.Equals(incomingEmailNorm, currentEmailNorm, StringComparison.OrdinalIgnoreCase))
+        {
+            if (await _employeeRepository.EmailExistsAsync(incomingEmailNorm, cancellationToken))
+                throw new InvalidOperationException("Email already in use.");
+        }
+    }
+
+    private async Task ValidateDocumentUniquenessAsync(string? newDocumentNumber, Employee employee, CancellationToken cancellationToken)
+    {
+        var incomingDoc = new DocumentNumber(newDocumentNumber ?? string.Empty);
+        if (!string.Equals(incomingDoc.Digits, employee.DocumentNumber.Digits, StringComparison.Ordinal))
+        {
+            if (await _employeeRepository.CpfExistsAsync(incomingDoc.Digits, cancellationToken))
+                throw new InvalidOperationException("Document number already in use.");
+        }
+    }
+
+    private static void ValidatePhoneNumbers(List<string>? phones)
+    {
+        var requestedPhones = phones ?? new List<string>();
+        if (requestedPhones.Count == 0)
+            throw new ArgumentException("At least one phone number is required.", nameof(phones));
+    }
+
+    private async Task UpdateEmployeeDataAsync(
+        UpdateEmployeeCommand command, 
+        Employee employee, 
+        UserAccount currentUser, 
+        Role currentUserRole, 
+        CancellationToken cancellationToken)
+    {
+        UpdateEmployeeBasicInfo(command, employee);
+        UpdateEmployeePhones(command.Phones, employee);
+        
+        if (!string.IsNullOrEmpty(command.Password))
+        {
+            await UpdateEmployeePasswordAsync(command.Password, employee, currentUser, currentUserRole, cancellationToken);
+        }
+    }
+
+    private static void UpdateEmployeeBasicInfo(UpdateEmployeeCommand command, Employee employee)
+    {
+        employee.ChangeName(command.FirstName ?? string.Empty, command.LastName ?? string.Empty);
+        employee.ChangeEmail(new Email((command.Email ?? string.Empty).Trim()));
+        employee.ChangeDocument(new DocumentNumber((command.DocumentNumber ?? string.Empty).Trim()));
+        
+        if (command.JobTitleId != Guid.Empty)
+        {
+            employee.ChangeJobTitle(command.JobTitleId);
+        }
+        
+        employee.ChangeDepartment(command.DepartmentId);
+    }
+
+    private static void UpdateEmployeePhones(List<string>? phones, Employee employee)
+    {
+        var requestedPhones = phones ?? new List<string>();
+        employee.UpdatePhones(requestedPhones);
+    }
+
+    private async Task UpdateEmployeePasswordAsync(
+        string newPassword, 
+        Employee employee, 
+        UserAccount currentUser, 
+        Role currentUserRole, 
+        CancellationToken cancellationToken)
+    {
+        var userAccount = await _userAccountRepository.GetByEmailAsync(employee.Email.Value, cancellationToken);
+        if (userAccount != null)
+        {
+            var targetUserRole = await GetRoleByIdAsync(userAccount.RoleId, cancellationToken);
+            if (targetUserRole != null)
+            {
+                ValidatePasswordChangePermission(currentUser, currentUserRole, userAccount, targetUserRole);
+                await ChangeUserPasswordAsync(userAccount, newPassword, cancellationToken);
+            }
+        }
+    }
+
+    private static void ValidatePasswordChangePermission(UserAccount currentUser, Role currentUserRole, UserAccount targetUser, Role targetUserRole)
+    {
+        if (!currentUser.CanModifyUser(currentUserRole, targetUser, targetUserRole))
+        {
+            throw new UnauthorizedAccessException($"You cannot modify the password of a user with role level '{targetUserRole.Level}'. Your role level is '{currentUserRole.Level}'.");
+        }
+    }
+
+    private async Task ChangeUserPasswordAsync(UserAccount userAccount, string newPassword, CancellationToken cancellationToken)
+    {
+        var newPasswordHash = _passwordHasher.Hash(newPassword);
+        userAccount.ChangePassword(newPasswordHash);
+        await _userAccountRepository.UpdateAsync(userAccount, cancellationToken);
+    }
+
+    private async Task PersistChangesAsync(Employee employee, CancellationToken cancellationToken)
+    {
+        await _employeeRepository.UpdateAsync(employee, cancellationToken);
+    }
+
+    /// <summary>
+    /// Converts JobTitle.HierarchyLevel to HierarchicalRole for authorization purposes
     /// </summary>
     private static HierarchicalRole ConvertJobTitleLevelToHierarchicalRole(int hierarchyLevel)
     {
         return hierarchyLevel switch
         {
-            999 => HierarchicalRole.SuperUser,  // SuperUser → SuperUser ✅
-            1 => HierarchicalRole.Director,     // President → Director ✅ (nível mais alto)
-            2 => HierarchicalRole.Manager,      // Director → Manager ✅
-            3 => HierarchicalRole.Senior,       // Head → Senior ✅
-            4 => HierarchicalRole.Pleno,        // Coordinator → Pleno ✅
-            5 => HierarchicalRole.Junior,       // Employee → Junior ✅ (nível mais baixo)
-            _ => HierarchicalRole.Junior        // Default
+            999 => HierarchicalRole.SuperUser,
+            1 => HierarchicalRole.Director,
+            2 => HierarchicalRole.Manager,
+            3 => HierarchicalRole.Senior,
+            4 => HierarchicalRole.Pleno,
+            5 => HierarchicalRole.Junior,
+            _ => HierarchicalRole.Junior
         };
     }
 
     /// <summary>
-    /// Busca uma role pelo ID
+    /// Retrieves a role by ID - temporary implementation until proper role repository is available
     /// </summary>
-    private async Task<Role?> GetRoleByIdAsync(Guid roleId, CancellationToken ct)
+    private Task<Role?> GetRoleByIdAsync(Guid roleId, CancellationToken cancellationToken)
     {
         try
         {
-            // Como não temos acesso direto ao contexto de Roles, vamos tentar buscar através de usuários
-            // ou criar uma role temporária baseada no ID
-            // Esta é uma solução temporária - idealmente deveríamos ter acesso direto ao repositório de Roles
-            
-            // Por enquanto, vamos criar uma role temporária baseada no ID
-            // Em uma implementação real, você deveria ter um IRoleRepository
+            // TODO: Implement proper role repository access
+            // This is a temporary solution - ideally we should have direct access to IRoleRepository
             var tempRole = new Role("Temporary", HierarchicalRole.Junior);
-            return tempRole;
+            return Task.FromResult<Role?>(tempRole);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Erro ao buscar role por ID: {RoleId}", roleId);
-            return null;
+            _logger.LogError(ex, "Error retrieving role by ID: {RoleId}", roleId);
+            return Task.FromResult<Role?>(null);
         }
     }
 }

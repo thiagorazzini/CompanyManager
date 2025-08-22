@@ -5,6 +5,7 @@ export { default as Toast } from './ui/Toast';
 
 // Layout Components
 export { default as PageLayout } from './layout/PageLayout';
+export { default as UserHeader } from './layout/UserHeader';
 
 // Other Components
 export { default as LoadingSpinner } from './LoadingSpinner';

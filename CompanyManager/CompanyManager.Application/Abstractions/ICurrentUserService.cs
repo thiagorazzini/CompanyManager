@@ -1,4 +1,5 @@
 using CompanyManager.Domain.Entities;
+using CompanyManager.Domain.AccessControl;
 
 namespace CompanyManager.Application.Abstractions
 {
@@ -18,6 +19,16 @@ namespace CompanyManager.Application.Abstractions
         /// Gets the current authenticated user's employee information
         /// </summary>
         Task<Employee?> GetCurrentEmployeeAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets the current authenticated user's job title information
+        /// </summary>
+        Task<JobTitle?> GetCurrentJobTitleAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets the current authenticated user's role information
+        /// </summary>
+        Task<Role?> GetCurrentRoleAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Checks if the current user is authenticated

@@ -23,7 +23,7 @@ function Table<T extends { id: string | number }>({
     onEdit,
     onDelete,
     isLoading = false,
-    emptyMessage = 'Nenhum registro encontrado',
+    emptyMessage = 'No records found',
     className = '',
 }: TableProps<T>) {
     if (isLoading) {
@@ -64,7 +64,7 @@ function Table<T extends { id: string | number }>({
                         ))}
                         {(onEdit || onDelete) && (
                             <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                                Ações
+                                Actions
                             </th>
                         )}
                     </tr>
@@ -93,7 +93,7 @@ function Table<T extends { id: string | number }>({
                                                 onClick={() => onEdit(item)}
                                                 className="text-blue-600 hover:text-blue-900 font-medium text-sm px-3 py-1 rounded border border-blue-600 hover:bg-blue-50 transition-colors"
                                             >
-                                                Editar
+                                                Edit
                                             </button>
                                         )}
                                         {onDelete && (
@@ -101,7 +101,7 @@ function Table<T extends { id: string | number }>({
                                                 onClick={() => onDelete(item)}
                                                 className="text-red-600 hover:text-red-900 font-medium text-sm px-3 py-1 rounded border border-red-600 hover:bg-red-50 transition-colors"
                                             >
-                                                Deletar
+                                                Delete
                                             </button>
                                         )}
                                     </div>

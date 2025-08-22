@@ -8,13 +8,38 @@ interface LoginCredentials {
 interface AuthResponse {
     message: string;
     accessToken: string;
-    refreshToken?: string;
     expiresAt: string;
     tokenType: string;
     user?: {
+        id: string;
         email: string;
         firstName?: string;
         lastName?: string;
+    };
+}
+
+interface LogoutResponse {
+    message: string;
+    timestamp: string;
+}
+
+interface UserProfileResponse {
+    id: string;
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    isActive: boolean;
+    lastLoginAt: string;
+    jobTitle?: {
+        id: string;
+        name: string;
+        hierarchyLevel: number;
+        description: string;
+    };
+    role?: {
+        id: string;
+        name: string;
+        level: string;
     };
 }
 
@@ -24,19 +49,16 @@ class AuthService {
         return response.data;
     }
 
-    async logout(): Promise<void> {
-        await httpClient.post('/v1/auth/logout');
+    async logout(): Promise<LogoutResponse> {
+        const response = await httpClient.post<LogoutResponse>('/v1/auth/logout');
         localStorage.removeItem('token');
-        localStorage.removeItem('refreshToken');
+        return response.data;
     }
 
-    async refreshToken(): Promise<{ accessToken: string }> {
-        const refreshToken = localStorage.getItem('refreshToken');
-        if (!refreshToken) {
-            throw new Error('No refresh token available');
-        }
 
-        const response = await httpClient.post<{ accessToken: string }>('/v1/auth/refresh', { refreshToken });
+
+    async getProfile(): Promise<UserProfileResponse> {
+        const response = await httpClient.get<UserProfileResponse>('/v1/auth/profile');
         return response.data;
     }
 

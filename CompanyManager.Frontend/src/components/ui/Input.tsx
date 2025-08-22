@@ -1,4 +1,4 @@
-import { useState } from 'react';
+
 
 interface InputProps {
     label?: string;
@@ -10,6 +10,7 @@ interface InputProps {
     disabled?: boolean;
     error?: string;
     className?: string;
+    id?: string;
 }
 
 const Input: React.FC<InputProps> = ({
@@ -22,6 +23,7 @@ const Input: React.FC<InputProps> = ({
     disabled = false,
     error,
     className = '',
+    id,
 }) => {
     return (
         <div className={`w-full ${className}`}>
@@ -32,7 +34,7 @@ const Input: React.FC<InputProps> = ({
                 </label>
             )}
             <input
-                id={`input-${label?.toLowerCase() || 'input'}`}
+                id={id || `input-${label?.toLowerCase() || 'input'}`}
                 type={type}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}

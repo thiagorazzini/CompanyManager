@@ -43,7 +43,6 @@ namespace CompanyManager.Application
         
         // JobTitle handlers (se necessário no futuro)
             services.AddScoped<IAuthenticateCommandHandler, AuthenticateCommandHandler>();
-            services.AddScoped<IRefreshTokenCommandHandler, RefreshTokenCommandHandler>();
             services.AddScoped<IChangePasswordCommandHandler, ChangePasswordCommandHandler>();
             services.AddScoped<ILogoutCommandHandler, LogoutCommandHandler>();
 
@@ -64,7 +63,6 @@ namespace CompanyManager.Application
             services.AddScoped<IValidator<CreateDepartmentRequest>, CreateDepartmentRequestValidator>();
             services.AddScoped<IValidator<UpdateDepartmentRequest>, UpdateDepartmentRequestValidator>();
             services.AddScoped<IValidator<AuthenticateRequest>, AuthenticateRequestValidator>();
-            services.AddScoped<IValidator<RefreshTokenRequest>, RefreshTokenRequestValidator>();
             services.AddScoped<IValidator<ChangePasswordRequest>, ChangePasswordRequestValidator>();
 
             // Register services
@@ -72,6 +70,9 @@ namespace CompanyManager.Application
             services.AddScoped<CompanyManager.Domain.Interfaces.IPasswordHasher, PasswordHasher>();
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<ICurrentUserService, CurrentUserService>();
+            services.AddScoped<IHierarchicalAuthorizationService, HierarchicalAuthorizationService>();
+            services.AddScoped<IRoleManagementService, RoleManagementService>();
+            services.AddScoped<IEmployeeValidationService, EmployeeValidationService>();
             
             // Register TokenService
             services.AddScoped<CompanyManager.Application.Auth.Interfaces.ITokenService, CompanyManager.Application.Auth.TokenService>();

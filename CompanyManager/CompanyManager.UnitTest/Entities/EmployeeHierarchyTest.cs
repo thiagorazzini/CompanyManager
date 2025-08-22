@@ -22,7 +22,7 @@ namespace CompanyManager.UnitTest.Entities
                 new Email("john.doe@company.com"),
                 new DocumentNumber("12345678901"),
                 new DateOfBirth(new DateTime(1990, 1, 1)),
-                new[] { new PhoneNumber("+5511999999999") },
+                new[] { "+5511999999999" },
                 Guid.NewGuid(),
                 Guid.NewGuid());
         }

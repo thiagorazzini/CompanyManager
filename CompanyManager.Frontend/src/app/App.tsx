@@ -8,7 +8,7 @@ const App: React.FC = () => {
         <BrowserRouter>
             <AppRoutes />
             <Toaster
-                position="top-right"
+                position="top-left"
                 toastOptions={{
                     duration: 5000,
                     style: {
