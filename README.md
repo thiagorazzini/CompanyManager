@@ -43,10 +43,8 @@ curl -X 'POST' \
   -H 'accept: text/plain' \
   -H 'Content-Type: application/json' \
   -d '{
-  "username": "Admin",
-  "password": "Admin@123456",
-  "email": "admin@company.com",
-  "role": "SuperUser"
+  "email": "admin@companymanager.com",
+  "password": "Admin123!"
 }'
 ```
 
@@ -62,8 +60,8 @@ curl -X 'POST' \
   -H 'accept: text/plain' \
   -H 'Content-Type: application/json' \
   -d '{
-  "email": "admin@company.com",
-  "password": "Admin@123456"
+  "email": "admin@companymanager.com",
+  "password": "Admin123!"
 }'
 ```
 
